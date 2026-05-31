@@ -40,6 +40,10 @@ interface DataContextValue {
   registrations: RegistrationRequest[]
   addUser: (user: User) => void
   updateUser: (email: string, patch: Partial<Omit<User, 'email' | 'role'>>) => User | null
+  deleteUser: (email: string) => void
+  addClass: (schoolClass: SchoolClass) => void
+  updateClass: (id: string, patch: Partial<Omit<SchoolClass, 'id'>>) => void
+  deleteClass: (id: string) => void
   addScore: (score: Omit<ScoreDetail, 'id'>) => void
   addProgress: (entry: Omit<ProgressDetail, 'id'>) => void
   addAttendance: (record: Omit<AttendanceRecord, 'id'>) => void
@@ -71,6 +75,7 @@ interface ChatFile {
 
 const KEYS = {
   users: 'estudiez.users',
+  classes: 'estudiez.classes',
   scores: 'estudiez.scores',
   progress: 'estudiez.progress',
   attendance: 'estudiez.attendance',
@@ -142,7 +147,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           baseRegistrations,
         ] = await Promise.all([
           cached<User[]>(KEYS.users, () => loadJson<User[]>('/data/users.json')),
-          loadJson<SchoolClass[]>('/data/classes.json'),
+          cached<SchoolClass[]>(KEYS.classes, () => loadJson<SchoolClass[]>('/data/classes.json')),
           loadJson<Subject[]>('/data/subjects.json'),
           cached<ScoreDetail[]>(KEYS.scores, () => loadJson<ScoreDetail[]>('/data/scores.json')),
           cached<ProgressDetail[]>(KEYS.progress, () =>
@@ -213,6 +218,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!loading) window.localStorage.setItem(KEYS.users, JSON.stringify(users))
   }, [users, loading])
   useEffect(() => {
+    if (!loading) window.localStorage.setItem(KEYS.classes, JSON.stringify(classes))
+  }, [classes, loading])
+  useEffect(() => {
     if (!loading) window.localStorage.setItem(KEYS.scores, JSON.stringify(scores))
   }, [scores, loading])
   useEffect(() => {
@@ -260,6 +268,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
       )
       return updated
     },
+    [],
+  )
+  const deleteUser = useCallback((email: string) => {
+    const normalized = email.trim().toLowerCase()
+    setUsers((prev) => prev.filter((user) => user.email !== normalized))
+  }, [])
+  const addClass = useCallback(
+    (schoolClass: SchoolClass) => setClasses((prev) => [...prev, schoolClass]),
+    [],
+  )
+  const updateClass = useCallback(
+    (id: string, patch: Partial<Omit<SchoolClass, 'id'>>) =>
+      setClasses((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c))),
+    [],
+  )
+  const deleteClass = useCallback(
+    (id: string) => setClasses((prev) => prev.filter((c) => c.id !== id)),
     [],
   )
   const addScore = useCallback(
@@ -368,6 +393,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       helplines,
       addUser,
       updateUser,
+      deleteUser,
+      addClass,
+      updateClass,
+      deleteClass,
       addScore,
       addProgress,
       addAttendance,
@@ -402,6 +431,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       helplines,
       addUser,
       updateUser,
+      deleteUser,
+      addClass,
+      updateClass,
+      deleteClass,
       addScore,
       addProgress,
       addAttendance,
