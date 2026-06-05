@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "title": "Class lists for the 2025-2026 school year are published",
+    "body": "The official class assignments for grades 10, 11, and 12 are now available. Please check your homeroom and report on the first day.",
+    "date": "2026-05-28",
+    "author": "Principal Vo",
+    "category": "Announcement"
+  },
+  {
+    "id": 2,
+    "title": "Annual Science Festival - June 20",
+    "body": "Join us for the Science Festival featuring student projects, experiments, and guest speakers. All students and parents are welcome.",
+    "date": "2026-06-02",
+    "author": "Principal Vo",
+    "category": "Event"
+  },
+  {
+    "id": 3,
+    "title": "Library extended hours during exam season",
+    "body": "The library will stay open until 20:00 on weekdays from June 5 to June 30 to support exam preparation.",
+    "date": "2026-06-04",
+    "author": "Principal Vo",
+    "category": "Notice"
+  }
+]

@@ -1,0 +1,52 @@
+[
+  {
+    "id": 1,
+    "studentEmail": "student@estudiez.app",
+    "classId": "10A1",
+    "subject": "Mathematics",
+    "testId": "MATH-T1",
+    "description": "Mathematics Unit Test 1",
+    "date": "2026-04-10",
+    "scoreReceived": 82
+  },
+  {
+    "id": 2,
+    "studentEmail": "student@estudiez.app",
+    "classId": "10A1",
+    "subject": "English",
+    "testId": "ENG-T2",
+    "description": "English Reading Comprehension",
+    "date": "2026-05-12",
+    "scoreReceived": 88
+  },
+  {
+    "id": 3,
+    "studentEmail": "student@estudiez.app",
+    "classId": "10A1",
+    "subject": "Physics",
+    "testId": "PHY-T1",
+    "description": "Physics Quiz - Forces",
+    "date": "2026-05-22",
+    "scoreReceived": 75
+  },
+  {
+    "id": 4,
+    "studentEmail": "linh@estudiez.app",
+    "classId": "10A1",
+    "subject": "Mathematics",
+    "testId": "MATH-T1",
+    "description": "Mathematics Unit Test 1",
+    "date": "2026-04-10",
+    "scoreReceived": 69
+  },
+  {
+    "id": 5,
+    "studentEmail": "minh@estudiez.app",
+    "classId": "11A2",
+    "subject": "Physics",
+    "testId": "PHY-T1",
+    "description": "Physics Quiz - Forces",
+    "date": "2026-05-22",
+    "scoreReceived": 91
+  }
+]

@@ -1,0 +1,76 @@
+[
+  {
+    "email": "admin@estudiez.app",
+    "fullName": "Principal Vo",
+    "address": "District 1, Ho Chi Minh City",
+    "phone": "+84 28 1234 0000",
+    "password": "admin123",
+    "role": "admin"
+  },
+  {
+    "email": "teacher@estudiez.app",
+    "fullName": "Ms. Tran",
+    "address": "District 3, Ho Chi Minh City",
+    "phone": "+84 90 111 2222",
+    "password": "teacher123",
+    "role": "teacher",
+    "subject": "Mathematics"
+  },
+  {
+    "email": "science.teacher@estudiez.app",
+    "fullName": "Mr. Le",
+    "address": "District 5, Ho Chi Minh City",
+    "phone": "+84 90 333 4444",
+    "password": "teacher123",
+    "role": "teacher",
+    "subject": "Physics"
+  },
+  {
+    "email": "student@estudiez.app",
+    "fullName": "An Nguyen",
+    "address": "District 1, Ho Chi Minh City",
+    "age": 16,
+    "password": "student123",
+    "role": "student",
+    "classId": "10A1",
+    "grade": 10
+  },
+  {
+    "email": "linh@estudiez.app",
+    "fullName": "Linh Pham",
+    "address": "District 4, Ho Chi Minh City",
+    "age": 16,
+    "password": "student123",
+    "role": "student",
+    "classId": "10A1",
+    "grade": 10
+  },
+  {
+    "email": "minh@estudiez.app",
+    "fullName": "Minh Tran",
+    "address": "District 7, Ho Chi Minh City",
+    "age": 17,
+    "password": "student123",
+    "role": "student",
+    "classId": "11A2",
+    "grade": 11
+  },
+  {
+    "email": "parent@estudiez.app",
+    "fullName": "Binh Nguyen",
+    "address": "District 1, Ho Chi Minh City",
+    "phone": "+84 91 555 6666",
+    "password": "parent123",
+    "role": "parent",
+    "childEmail": "student@estudiez.app"
+  },
+  {
+    "email": "parent2@estudiez.app",
+    "fullName": "Hoa Pham",
+    "address": "District 4, Ho Chi Minh City",
+    "phone": "+84 91 777 8888",
+    "password": "parent123",
+    "role": "parent",
+    "childEmail": "linh@estudiez.app"
+  }
+]

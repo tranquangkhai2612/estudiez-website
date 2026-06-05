@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "title": "Khan Academy - Algebra",
+    "type": "video",
+    "url": "https://www.khanacademy.org/math/algebra",
+    "subject": "Mathematics",
+    "classId": "10A1",
+    "system": "regular",
+    "addedBy": "Ms. Tran"
+  },
+  {
+    "id": 2,
+    "title": "Cambridge Grammar Practice",
+    "type": "document",
+    "url": "https://dictionary.cambridge.org/grammar/british-grammar/",
+    "subject": "English",
+    "classId": "10A1",
+    "system": "regular",
+    "addedBy": "Ms. Hoa"
+  },
+  {
+    "id": 3,
+    "title": "BBC Bitesize - Physics",
+    "type": "external-link",
+    "url": "https://www.bbc.co.uk/bitesize/subjects/zpm6fg8",
+    "subject": "Physics",
+    "classId": "10A1",
+    "system": "regular",
+    "addedBy": "Mr. Le"
+  },
+  {
+    "id": 4,
+    "title": "Quadratics Revision Worksheet (PDF)",
+    "type": "document",
+    "url": "https://www.khanacademy.org/math/algebra/x2f8bb11595b61c86:quadratic-functions-equations",
+    "subject": "Mathematics",
+    "classId": "10A1",
+    "system": "revision",
+    "addedBy": "Ms. Tran"
+  }
+]

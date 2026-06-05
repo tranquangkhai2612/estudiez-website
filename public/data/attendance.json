@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "studentEmail": "student@estudiez.app",
+    "classId": "10A1",
+    "subject": "Mathematics",
+    "date": "2026-06-01",
+    "period": 1,
+    "status": "present",
+    "teacher": "Ms. Tran"
+  },
+  {
+    "id": 2,
+    "studentEmail": "student@estudiez.app",
+    "classId": "10A1",
+    "subject": "Physics",
+    "date": "2026-06-01",
+    "period": 3,
+    "status": "late",
+    "teacher": "Mr. Le"
+  },
+  {
+    "id": 3,
+    "studentEmail": "student@estudiez.app",
+    "classId": "10A1",
+    "subject": "Mathematics",
+    "date": "2026-06-02",
+    "period": 1,
+    "status": "present",
+    "teacher": "Ms. Tran"
+  },
+  {
+    "id": 4,
+    "studentEmail": "linh@estudiez.app",
+    "classId": "10A1",
+    "subject": "Mathematics",
+    "date": "2026-06-01",
+    "period": 1,
+    "status": "absent",
+    "teacher": "Ms. Tran"
+  },
+  {
+    "id": 5,
+    "studentEmail": "linh@estudiez.app",
+    "classId": "10A1",
+    "subject": "Physics",
+    "date": "2026-06-01",
+    "period": 3,
+    "status": "present",
+    "teacher": "Mr. Le"
+  },
+  {
+    "id": 6,
+    "studentEmail": "minh@estudiez.app",
+    "classId": "11A2",
+    "subject": "Physics",
+    "date": "2026-06-02",
+    "period": 2,
+    "status": "excused",
+    "teacher": "Mr. Le"
+  }
+]

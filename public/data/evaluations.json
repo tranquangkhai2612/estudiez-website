@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "studentEmail": "student@estudiez.app",
+    "subject": "Mathematics",
+    "testId": "MATH-T1",
+    "strengths": "Strong at solving linear equations and basic algebra.",
+    "weaknesses": "Struggles with quadratic word problems and factoring.",
+    "suggestedPath": "AI suggestion: Spend 2 weeks on factoring drills (Khan Academy), then practice 5 quadratic word problems daily. Re-test in 3 weeks.",
+    "teacher": "Ms. Tran"
+  },
+  {
+    "id": 2,
+    "studentEmail": "student@estudiez.app",
+    "subject": "Physics",
+    "testId": "PHY-T1",
+    "strengths": "Good grasp of Newton's laws conceptually.",
+    "weaknesses": "Calculation errors in force diagrams under friction.",
+    "suggestedPath": "AI suggestion: Review free-body diagrams, complete the 'Forces & Friction' worksheet, and join Saturday revision class.",
+    "teacher": "Mr. Le"
+  }
+]

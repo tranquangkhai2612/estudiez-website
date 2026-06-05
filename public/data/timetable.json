@@ -1,0 +1,16 @@
+[
+  { "id": 1, "classId": "10A1", "day": "Mon", "period": 1, "subject": "Mathematics", "teacher": "Ms. Tran", "room": "A101", "system": "regular" },
+  { "id": 2, "classId": "10A1", "day": "Mon", "period": 2, "subject": "Literature", "teacher": "Ms. Mai", "room": "A101", "system": "regular" },
+  { "id": 3, "classId": "10A1", "day": "Mon", "period": 3, "subject": "Physics", "teacher": "Mr. Le", "room": "Lab 1", "system": "regular" },
+  { "id": 4, "classId": "10A1", "day": "Tue", "period": 1, "subject": "English", "teacher": "Ms. Hoa", "room": "A101", "system": "regular" },
+  { "id": 5, "classId": "10A1", "day": "Tue", "period": 2, "subject": "Chemistry", "teacher": "Mr. Phuc", "room": "Lab 2", "system": "regular" },
+  { "id": 6, "classId": "10A1", "day": "Wed", "period": 1, "subject": "Mathematics", "teacher": "Ms. Tran", "room": "A101", "system": "regular" },
+  { "id": 7, "classId": "10A1", "day": "Wed", "period": 4, "subject": "History", "teacher": "Mr. Quang", "room": "A101", "system": "regular" },
+  { "id": 8, "classId": "10A1", "day": "Thu", "period": 2, "subject": "Physics", "teacher": "Mr. Le", "room": "Lab 1", "system": "regular" },
+  { "id": 9, "classId": "10A1", "day": "Fri", "period": 1, "subject": "English", "teacher": "Ms. Hoa", "room": "A101", "system": "regular" },
+  { "id": 10, "classId": "10A1", "day": "Fri", "period": 3, "subject": "Biology", "teacher": "Ms. Lan", "room": "Lab 3", "system": "regular" },
+  { "id": 11, "classId": "10A1", "day": "Sat", "period": 1, "subject": "Mathematics", "teacher": "Ms. Tran", "room": "A101", "system": "revision" },
+  { "id": 12, "classId": "11A2", "day": "Mon", "period": 1, "subject": "Physics", "teacher": "Mr. Le", "room": "Lab 1", "system": "regular" },
+  { "id": 13, "classId": "11A2", "day": "Tue", "period": 2, "subject": "Mathematics", "teacher": "Ms. Tran", "room": "B201", "system": "regular" },
+  { "id": 14, "classId": "11A2", "day": "Thu", "period": 3, "subject": "Chemistry", "teacher": "Mr. Phuc", "room": "Lab 2", "system": "regular" }
+]

@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1,
+    "studentEmail": "student@estudiez.app",
+    "subject": "Physics",
+    "term": "Term 1",
+    "testName": "Science Practical",
+    "score": 79,
+    "remark": "Good analysis, improve presentation"
+  },
+  {
+    "id": 2,
+    "studentEmail": "student@estudiez.app",
+    "subject": "Mathematics",
+    "term": "Term 2",
+    "testName": "Mathematics Midterm",
+    "score": 86,
+    "remark": "Clear improvement in algebra"
+  },
+  {
+    "id": 3,
+    "studentEmail": "student@estudiez.app",
+    "subject": "English",
+    "term": "Term 2",
+    "testName": "English Essay",
+    "score": 81,
+    "remark": "Strong structure, expand vocabulary"
+  }
+]

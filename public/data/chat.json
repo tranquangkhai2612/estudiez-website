@@ -1,0 +1,67 @@
+{
+  "groups": [
+    {
+      "id": "10A1-2025-2026-st",
+      "name": "10A1 Students & Teachers",
+      "classId": "10A1",
+      "year": "2025-2026",
+      "type": "student-teacher"
+    },
+    {
+      "id": "10A1-2025-2026-pt",
+      "name": "10A1 Parents & Teachers",
+      "classId": "10A1",
+      "year": "2025-2026",
+      "type": "parent-teacher"
+    },
+    {
+      "id": "11A2-2025-2026-st",
+      "name": "11A2 Students & Teachers",
+      "classId": "11A2",
+      "year": "2025-2026",
+      "type": "student-teacher"
+    }
+  ],
+  "messages": [
+    {
+      "id": 1,
+      "groupId": "10A1-2025-2026-st",
+      "senderEmail": "teacher@estudiez.app",
+      "senderName": "Ms. Tran",
+      "body": "Welcome to 10A1! Remember to bring your calculators tomorrow.",
+      "sentAt": "2026-06-01T08:00"
+    },
+    {
+      "id": 2,
+      "groupId": "10A1-2025-2026-st",
+      "senderEmail": "student@estudiez.app",
+      "senderName": "An Nguyen",
+      "body": "Thank you, Ms. Tran! Will the test cover chapter 3?",
+      "sentAt": "2026-06-01T08:05"
+    },
+    {
+      "id": 3,
+      "groupId": "10A1-2025-2026-st",
+      "senderEmail": "teacher@estudiez.app",
+      "senderName": "Ms. Tran",
+      "body": "Yes, chapters 2 and 3. Good luck!",
+      "sentAt": "2026-06-01T08:07"
+    },
+    {
+      "id": 4,
+      "groupId": "10A1-2025-2026-pt",
+      "senderEmail": "teacher@estudiez.app",
+      "senderName": "Ms. Tran",
+      "body": "Dear parents, the progress meeting is on June 18 at 18:00.",
+      "sentAt": "2026-06-04T17:00"
+    },
+    {
+      "id": 5,
+      "groupId": "10A1-2025-2026-pt",
+      "senderEmail": "parent@estudiez.app",
+      "senderName": "Binh Nguyen",
+      "body": "Thank you, we will be there.",
+      "sentAt": "2026-06-04T17:30"
+    }
+  ]
+}

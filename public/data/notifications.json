@@ -1,0 +1,47 @@
+[
+  {
+    "id": 1,
+    "title": "Room change for Physics period",
+    "body": "Thursday's Physics class for 10A1 moves from Lab 1 to Lab 3.",
+    "date": "2026-06-03",
+    "audience": "class",
+    "target": "10A1",
+    "sender": "Mr. Le"
+  },
+  {
+    "id": 2,
+    "title": "Math Unit Test 1 result published",
+    "body": "Your Mathematics Unit Test 1 score is now available in your Mark Report.",
+    "date": "2026-06-02",
+    "audience": "student",
+    "target": "student@estudiez.app",
+    "sender": "Ms. Tran"
+  },
+  {
+    "id": 3,
+    "title": "Attendance notice",
+    "body": "Your child was marked absent in Mathematics on 2026-06-01. Please confirm the reason with the homeroom teacher.",
+    "date": "2026-06-01",
+    "audience": "parent",
+    "target": "parent2@estudiez.app",
+    "sender": "Ms. Tran"
+  },
+  {
+    "id": 4,
+    "title": "Staff meeting - curriculum review",
+    "body": "All subject teachers please attend the curriculum review meeting on Friday at 16:00 in the conference room.",
+    "date": "2026-06-03",
+    "audience": "teacher",
+    "target": "",
+    "sender": "Principal Vo"
+  },
+  {
+    "id": 5,
+    "title": "Progress meeting for parents",
+    "body": "A parent-teacher progress meeting for 10A1 is scheduled for June 18 at 18:00.",
+    "date": "2026-06-04",
+    "audience": "parent",
+    "target": "parent@estudiez.app",
+    "sender": "Ms. Tran"
+  }
+]
