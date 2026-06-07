@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card } from '../../components/Card'
 import { FormField } from '../../components/FormField'
 import { Tabs } from '../../components/Tabs'
 import { useAuth } from '../../hooks/useAuth'
 import { useData } from '../../hooks/useData'
 import { useToast } from '../../hooks/useToast'
-import type { Grade, SchoolClass, User } from '../../types'
+import { userDetailPath } from '../userDetailPath'
+import { classDetailPath } from '../classDetailPath'
+import type { Grade } from '../../types'
 
 export function AdminDashboard() {
   const { users, classes, registrations } = useData()
@@ -158,6 +161,7 @@ interface StudentFormState {
   email: string
   fullName: string
   address: string
+  phone: string
   age: string
   classId: string
   parentEmail: string
@@ -167,21 +171,22 @@ const STUDENT_INITIAL: StudentFormState = {
   email: '',
   fullName: '',
   address: '',
+  phone: '',
   age: '',
   classId: '',
   parentEmail: '',
 }
 
 function ManageStudents() {
-  const { users, classes, addUser, updateUser, deleteUser } = useData()
+  const { users, classes, addUser, updateUser } = useData()
   const { push } = useToast()
+  const navigate = useNavigate()
   const students = users.filter((u) => u.role === 'student')
 
   const [form, setForm] = useState<StudentFormState>({
     ...STUDENT_INITIAL,
     classId: classes[0]?.id ?? '',
   })
-  const [editingEmail, setEditingEmail] = useState<string | null>(null)
   const [errors, setErrors] = useState<Partial<Record<keyof StudentFormState, string>>>({})
 
   const update = <K extends keyof StudentFormState>(key: K, value: StudentFormState[K]) =>
@@ -189,44 +194,21 @@ function ManageStudents() {
 
   const resetForm = () => {
     setForm({ ...STUDENT_INITIAL, classId: classes[0]?.id ?? '' })
-    setEditingEmail(null)
     setErrors({})
-  }
-
-  const startEdit = (student: User) => {
-    const parent = users.find((u) => u.role === 'parent' && u.childEmail === student.email)
-    setForm({
-      email: student.email,
-      fullName: student.fullName,
-      address: student.address,
-      age: student.age ? String(student.age) : '',
-      classId: student.classId ?? '',
-      parentEmail: parent?.email ?? '',
-    })
-    setEditingEmail(student.email)
-    setErrors({})
-  }
-
-  const remove = (student: User) => {
-    if (!window.confirm(`Delete ${student.fullName}? This cannot be undone.`)) return
-    const parent = users.find((u) => u.role === 'parent' && u.childEmail === student.email)
-    if (parent) updateUser(parent.email, { childEmail: undefined })
-    deleteUser(student.email)
-    if (editingEmail === student.email) resetForm()
-    push('info', `${student.fullName} was removed.`)
   }
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const isEdit = editingEmail !== null
     const email = form.email.trim().toLowerCase()
     const next: Partial<Record<keyof StudentFormState, string>> = {}
     if (!form.email.trim()) next.email = 'Email is required.'
     else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) next.email = 'Enter a valid email.'
-    else if (!isEdit && users.some((u) => u.email === email))
-      next.email = 'This email already exists.'
+    else if (users.some((u) => u.email === email)) next.email = 'This email already exists.'
     if (!form.fullName.trim()) next.fullName = 'Full name is required.'
     if (!form.address.trim()) next.address = 'Address is required.'
+    if (!form.phone.trim()) next.phone = 'Phone number is required.'
+    else if (!/^[+\d][\d\s().-]{6,}$/.test(form.phone.trim()))
+      next.phone = 'Enter a valid phone number.'
     if (!form.classId) next.classId = 'Assign a class.'
     const ageNumber = Number(form.age)
     if (!form.age) next.age = 'Age is required.'
@@ -241,55 +223,34 @@ function ManageStudents() {
     const selectedClass = classes.find((c) => c.id === form.classId)
     const grade = (selectedClass?.grade ?? 10) as Grade
 
-    if (isEdit) {
-      updateUser(editingEmail, {
-        fullName: form.fullName.trim(),
-        address: form.address.trim(),
-        age: ageNumber,
-        classId: form.classId,
-        grade,
-      })
-    } else {
-      addUser({
-        email,
-        fullName: form.fullName.trim(),
-        address: form.address.trim(),
-        age: ageNumber,
-        password: 'student123',
-        role: 'student',
-        classId: form.classId,
-        grade,
-      })
-    }
+    addUser({
+      email,
+      fullName: form.fullName.trim(),
+      address: form.address.trim(),
+      phone: form.phone.trim(),
+      age: ageNumber,
+      password: 'student123',
+      role: 'student',
+      classId: form.classId,
+      grade,
+    })
 
-    // Sync the parent → child link.
-    const targetEmail = isEdit ? editingEmail : email
+    // Link an existing parent account to this student.
     const nextParentEmail = form.parentEmail.trim().toLowerCase()
-    const currentParent = users.find((u) => u.role === 'parent' && u.childEmail === targetEmail)
-    if (currentParent && currentParent.email !== nextParentEmail) {
-      updateUser(currentParent.email, { childEmail: undefined })
-    }
     if (nextParentEmail) {
       const parent = users.find((u) => u.email === nextParentEmail && u.role === 'parent')
-      if (parent) updateUser(nextParentEmail, { childEmail: targetEmail })
+      if (parent) updateUser(nextParentEmail, { childEmail: email })
     }
 
     resetForm()
-    push(
-      'success',
-      isEdit ? 'Student record updated.' : `Student added. Login info sent to ${email}.`,
-    )
+    push('success', `Student added. Login info sent to ${email}.`)
   }
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card
-        title={editingEmail ? 'Edit Student' : 'Add / Enroll Student'}
-        description={
-          editingEmail
-            ? 'Email is the account key and cannot be changed.'
-            : 'Login credentials are emailed to the student and parent.'
-        }
+        title="Add / Enroll Student"
+        description="Login credentials are emailed to the student and parent."
       >
         <form onSubmit={submit} noValidate className="space-y-3">
           <FormField
@@ -299,7 +260,6 @@ function ManageStudents() {
             value={form.email}
             onChange={(e) => update('email', e.target.value)}
             error={errors.email}
-            disabled={editingEmail !== null}
           />
           <FormField
             label="Full Name"
@@ -314,6 +274,14 @@ function ManageStudents() {
             value={form.address}
             onChange={(e) => update('address', e.target.value)}
             error={errors.address}
+          />
+          <FormField
+            label="Phone Number"
+            name="studentPhone"
+            type="tel"
+            value={form.phone}
+            onChange={(e) => update('phone', e.target.value)}
+            error={errors.phone}
           />
           <FormField
             label="Age"
@@ -354,17 +322,8 @@ function ManageStudents() {
               type="submit"
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
             >
-              {editingEmail ? 'Save Changes' : 'Add Student'}
+              Add Student
             </button>
-            {editingEmail ? (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-md px-4 py-2"
-              >
-                Cancel
-              </button>
-            ) : null}
           </div>
         </form>
       </Card>
@@ -377,40 +336,29 @@ function ManageStudents() {
                 <th className="py-2 pr-4">Name</th>
                 <th className="py-2 pr-4">Class</th>
                 <th className="py-2 pr-4">Email</th>
-                <th className="py-2 pr-2 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {students.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-3 text-slate-500">
+                  <td colSpan={3} className="py-3 text-slate-500">
                     No students yet.
                   </td>
                 </tr>
               ) : (
                 students.map((s) => (
                   <tr key={s.email} className="border-b border-slate-100">
-                    <td className="py-2 pr-4 font-semibold">{s.fullName}</td>
+                    <td className="py-2 pr-4 font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => navigate(userDetailPath(s.email))}
+                        className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                      >
+                        {s.fullName}
+                      </button>
+                    </td>
                     <td className="py-2 pr-4">{s.classId}</td>
                     <td className="py-2 pr-4 text-slate-600">{s.email}</td>
-                    <td className="py-2 pr-2">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => startEdit(s)}
-                          className="text-indigo-600 hover:text-indigo-800 text-sm font-semibold"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => remove(s)}
-                          className="text-rose-600 hover:text-rose-800 text-sm font-semibold"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                 ))
               )}
@@ -426,6 +374,7 @@ interface TeacherFormState {
   email: string
   fullName: string
   address: string
+  phone: string
   subject: string
 }
 
@@ -433,19 +382,20 @@ const TEACHER_INITIAL: TeacherFormState = {
   email: '',
   fullName: '',
   address: '',
+  phone: '',
   subject: '',
 }
 
 function ManageTeachers() {
-  const { users, subjects, classes, addUser, updateUser, deleteUser } = useData()
+  const { users, subjects, addUser } = useData()
   const { push } = useToast()
+  const navigate = useNavigate()
   const teachers = users.filter((u) => u.role === 'teacher')
 
   const [form, setForm] = useState<TeacherFormState>({
     ...TEACHER_INITIAL,
     subject: subjects[0]?.name ?? '',
   })
-  const [editingEmail, setEditingEmail] = useState<string | null>(null)
   const [errors, setErrors] = useState<Partial<Record<keyof TeacherFormState, string>>>({})
 
   const update = <K extends keyof TeacherFormState>(key: K, value: TeacherFormState[K]) =>
@@ -453,83 +403,42 @@ function ManageTeachers() {
 
   const resetForm = () => {
     setForm({ ...TEACHER_INITIAL, subject: subjects[0]?.name ?? '' })
-    setEditingEmail(null)
     setErrors({})
-  }
-
-  const startEdit = (teacher: User) => {
-    setForm({
-      email: teacher.email,
-      fullName: teacher.fullName,
-      address: teacher.address,
-      subject: teacher.subject ?? '',
-    })
-    setEditingEmail(teacher.email)
-    setErrors({})
-  }
-
-  const remove = (teacher: User) => {
-    const homeroomOf = classes.find((c) => c.homeroomTeacher === teacher.email)
-    if (homeroomOf) {
-      push('error', `${teacher.fullName} is homeroom teacher of ${homeroomOf.name}. Reassign the class first.`)
-      return
-    }
-    if (!window.confirm(`Delete ${teacher.fullName}? This cannot be undone.`)) return
-    deleteUser(teacher.email)
-    if (editingEmail === teacher.email) resetForm()
-    push('info', `${teacher.fullName} was removed.`)
   }
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const isEdit = editingEmail !== null
     const email = form.email.trim().toLowerCase()
     const next: Partial<Record<keyof TeacherFormState, string>> = {}
     if (!form.email.trim()) next.email = 'Email is required.'
     else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) next.email = 'Enter a valid email.'
-    else if (!isEdit && users.some((u) => u.email === email))
-      next.email = 'This email already exists.'
+    else if (users.some((u) => u.email === email)) next.email = 'This email already exists.'
     if (!form.fullName.trim()) next.fullName = 'Full name is required.'
     if (!form.address.trim()) next.address = 'Address is required.'
+    if (!form.phone.trim()) next.phone = 'Phone number is required.'
+    else if (!/^[+\d][\d\s().-]{6,}$/.test(form.phone.trim()))
+      next.phone = 'Enter a valid phone number.'
     if (!form.subject) next.subject = 'Assign a subject.'
 
     setErrors(next)
     if (Object.keys(next).length > 0) return
 
-    if (isEdit) {
-      updateUser(editingEmail, {
-        fullName: form.fullName.trim(),
-        address: form.address.trim(),
-        subject: form.subject,
-      })
-    } else {
-      addUser({
-        email,
-        fullName: form.fullName.trim(),
-        address: form.address.trim(),
-        password: 'teacher123',
-        role: 'teacher',
-        subject: form.subject,
-      })
-    }
+    addUser({
+      email,
+      fullName: form.fullName.trim(),
+      address: form.address.trim(),
+      phone: form.phone.trim(),
+      password: 'teacher123',
+      role: 'teacher',
+      subject: form.subject,
+    })
     resetForm()
-    push(
-      'success',
-      isEdit ? 'Teacher record updated.' : `Teacher added and assigned to ${form.subject}.`,
-    )
-  }
-
-  const reassign = (email: string, subject: string) => {
-    updateUser(email, { subject })
-    push('success', 'Subject reassigned.')
+    push('success', `Teacher added and assigned to ${form.subject}.`)
   }
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card
-        title={editingEmail ? 'Edit Teacher' : 'Add Subject Teacher'}
-        description={editingEmail ? 'Email is the account key and cannot be changed.' : undefined}
-      >
+      <Card title="Add Subject Teacher">
         <form onSubmit={submit} noValidate className="space-y-3">
           <FormField
             label="Email"
@@ -538,7 +447,6 @@ function ManageTeachers() {
             value={form.email}
             onChange={(e) => update('email', e.target.value)}
             error={errors.email}
-            disabled={editingEmail !== null}
           />
           <FormField
             label="Full Name"
@@ -553,6 +461,14 @@ function ManageTeachers() {
             value={form.address}
             onChange={(e) => update('address', e.target.value)}
             error={errors.address}
+          />
+          <FormField
+            label="Phone Number"
+            name="teacherPhone"
+            type="tel"
+            value={form.phone}
+            onChange={(e) => update('phone', e.target.value)}
+            error={errors.phone}
           />
           <FormField
             as="select"
@@ -574,17 +490,8 @@ function ManageTeachers() {
               type="submit"
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
             >
-              {editingEmail ? 'Save Changes' : 'Add Teacher'}
+              Add Teacher
             </button>
-            {editingEmail ? (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-md px-4 py-2"
-              >
-                Cancel
-              </button>
-            ) : null}
           </div>
         </form>
       </Card>
@@ -600,35 +507,19 @@ function ManageTeachers() {
                 className="flex flex-wrap items-center justify-between gap-2 border border-slate-200 rounded-lg px-3 py-2"
               >
                 <div>
-                  <p className="font-semibold text-slate-900">{t.fullName}</p>
+                  <button
+                    type="button"
+                    onClick={() => navigate(userDetailPath(t.email))}
+                    className="font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
+                  >
+                    {t.fullName}
+                  </button>
                   <p className="text-xs text-slate-500">{t.email}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <select
-                    value={t.subject ?? ''}
-                    onChange={(e) => reassign(t.email, e.target.value)}
-                    className="rounded-md border border-slate-300 px-2 py-1 text-sm"
-                  >
-                    {subjects.map((s) => (
-                      <option key={s.id} value={s.name}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => startEdit(t)}
-                    className="text-indigo-600 hover:text-indigo-800 text-sm font-semibold"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => remove(t)}
-                    className="text-rose-600 hover:text-rose-800 text-sm font-semibold"
-                  >
-                    Delete
-                  </button>
+                  <span className="inline-flex items-center rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5 text-xs font-semibold">
+                    {t.subject}
+                  </span>
                 </div>
               </li>
             ))}
@@ -656,8 +547,9 @@ const CLASS_INITIAL: ClassFormState = {
 }
 
 function ManageClasses() {
-  const { classes, users, addClass, updateClass, deleteClass } = useData()
+  const { classes, users, addClass } = useData()
   const { push } = useToast()
+  const navigate = useNavigate()
   const teachers = users.filter((u) => u.role === 'teacher')
 
   const studentsByClass = useMemo(() => {
@@ -671,7 +563,6 @@ function ManageClasses() {
   }, [users])
 
   const [form, setForm] = useState<ClassFormState>(CLASS_INITIAL)
-  const [editingId, setEditingId] = useState<string | null>(null)
   const [errors, setErrors] = useState<Partial<Record<keyof ClassFormState, string>>>({})
 
   const update = <K extends keyof ClassFormState>(key: K, value: ClassFormState[K]) =>
@@ -679,41 +570,15 @@ function ManageClasses() {
 
   const resetForm = () => {
     setForm(CLASS_INITIAL)
-    setEditingId(null)
     setErrors({})
-  }
-
-  const startEdit = (schoolClass: SchoolClass) => {
-    setForm({
-      id: schoolClass.id,
-      name: schoolClass.name,
-      grade: String(schoolClass.grade),
-      year: schoolClass.year,
-      homeroomTeacher: schoolClass.homeroomTeacher ?? '',
-    })
-    setEditingId(schoolClass.id)
-    setErrors({})
-  }
-
-  const remove = (schoolClass: SchoolClass) => {
-    const count = studentsByClass.get(schoolClass.id) ?? 0
-    if (count > 0) {
-      push('error', `${schoolClass.name} has ${count} enrolled student(s). Reassign them first.`)
-      return
-    }
-    if (!window.confirm(`Delete ${schoolClass.name}? This cannot be undone.`)) return
-    deleteClass(schoolClass.id)
-    if (editingId === schoolClass.id) resetForm()
-    push('info', `${schoolClass.name} was removed.`)
   }
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const isEdit = editingId !== null
     const id = form.id.trim()
     const next: Partial<Record<keyof ClassFormState, string>> = {}
     if (!id) next.id = 'Class ID is required.'
-    else if (!isEdit && classes.some((c) => c.id.toLowerCase() === id.toLowerCase()))
+    else if (classes.some((c) => c.id.toLowerCase() === id.toLowerCase()))
       next.id = 'This class ID already exists.'
     if (!form.name.trim()) next.name = 'Class name is required.'
     if (!form.year.trim()) next.year = 'Academic year is required.'
@@ -722,32 +587,20 @@ function ManageClasses() {
     if (Object.keys(next).length > 0) return
 
     const grade = Number(form.grade) as Grade
-    if (isEdit) {
-      updateClass(editingId, {
-        name: form.name.trim(),
-        grade,
-        year: form.year.trim(),
-        homeroomTeacher: form.homeroomTeacher || undefined,
-      })
-    } else {
-      addClass({
-        id,
-        name: form.name.trim(),
-        grade,
-        year: form.year.trim(),
-        homeroomTeacher: form.homeroomTeacher || undefined,
-      })
-    }
+    addClass({
+      id,
+      name: form.name.trim(),
+      grade,
+      year: form.year.trim(),
+      homeroomTeacher: form.homeroomTeacher || undefined,
+    })
     resetForm()
-    push('success', isEdit ? 'Class updated.' : `Class ${id} created.`)
+    push('success', `Class ${id} created.`)
   }
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card
-        title={editingId ? 'Edit Class' : 'Create Class'}
-        description={editingId ? 'Class ID is the key and cannot be changed.' : undefined}
-      >
+      <Card title="Create Class">
         <form onSubmit={submit} noValidate className="space-y-3">
           <FormField
             label="Class ID"
@@ -755,8 +608,7 @@ function ManageClasses() {
             value={form.id}
             onChange={(e) => update('id', e.target.value)}
             error={errors.id}
-            disabled={editingId !== null}
-            hint={editingId ? undefined : 'Short code, e.g. 10A1.'}
+            hint="Short code, e.g. 10A1."
           />
           <FormField
             label="Class Name"
@@ -802,17 +654,8 @@ function ManageClasses() {
               type="submit"
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
             >
-              {editingId ? 'Save Changes' : 'Create Class'}
+              Create Class
             </button>
-            {editingId ? (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-md px-4 py-2"
-              >
-                Cancel
-              </button>
-            ) : null}
           </div>
         </form>
       </Card>
@@ -830,9 +673,15 @@ function ManageClasses() {
                   className="flex flex-wrap items-start justify-between gap-2 border border-slate-200 rounded-lg px-3 py-2"
                 >
                   <div>
-                    <p className="font-semibold text-slate-900">
-                      {c.name}{' '}
-                      <span className="ml-1 inline-flex items-center rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5 text-xs font-semibold">
+                    <p>
+                      <button
+                        type="button"
+                        onClick={() => navigate(classDetailPath(c.id))}
+                        className="font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
+                      >
+                        {c.name}
+                      </button>{' '}
+                      <span className="inline-flex items-center rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5 text-xs font-semibold">
                         Grade {c.grade}
                       </span>
                     </p>
@@ -843,22 +692,7 @@ function ManageClasses() {
                       Homeroom: {homeroom ? homeroom.fullName : 'Unassigned'}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(c)}
-                      className="text-indigo-600 hover:text-indigo-800 text-sm font-semibold"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => remove(c)}
-                      className="text-rose-600 hover:text-rose-800 text-sm font-semibold"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  <span aria-hidden className="text-slate-400">→</span>
                 </li>
               )
             })}

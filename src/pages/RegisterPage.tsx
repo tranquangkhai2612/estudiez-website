@@ -9,6 +9,7 @@ interface RegisterFormState {
   email: string
   fullName: string
   address: string
+  phone: string
   age: string
   password: string
   confirmPassword: string
@@ -20,6 +21,7 @@ const initial: RegisterFormState = {
   email: '',
   fullName: '',
   address: '',
+  phone: '',
   age: '',
   password: '',
   confirmPassword: '',
@@ -61,6 +63,9 @@ export function RegisterPage() {
 
     if (!form.fullName.trim()) next.fullName = 'Full name is required.'
     if (!form.address.trim()) next.address = 'Address is required.'
+    if (!form.phone.trim()) next.phone = 'Phone number is required.'
+    else if (!/^[+\d][\d\s().-]{6,}$/.test(form.phone.trim()))
+      next.phone = 'Enter a valid phone number.'
 
     if (form.role === 'student') {
       const ageNumber = Number(form.age)
@@ -94,6 +99,7 @@ export function RegisterPage() {
       email: form.email.trim().toLowerCase(),
       fullName: form.fullName.trim(),
       address: form.address.trim(),
+      phone: form.phone.trim(),
       password: form.password,
       role: form.role,
       age: form.role === 'student' ? Number(form.age) : undefined,
@@ -140,6 +146,15 @@ export function RegisterPage() {
           onChange={(event) => update('address', event.target.value)}
           error={errors.address}
           autoComplete="street-address"
+        />
+        <FormField
+          label="Phone Number"
+          name="phone"
+          type="tel"
+          value={form.phone}
+          onChange={(event) => update('phone', event.target.value)}
+          error={errors.phone}
+          autoComplete="tel"
         />
         <FormField
           as="select"

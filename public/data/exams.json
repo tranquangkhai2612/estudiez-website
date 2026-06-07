@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "semesterId": "S1-2025",
+    "subject": "Mathematics",
+    "name": "Unit Test 1",
+    "date": "2025-09-25",
+    "completed": true
+  },
+  {
+    "id": 2,
+    "semesterId": "S1-2025",
+    "subject": "Mathematics",
+    "name": "Midterm Exam",
+    "date": "2025-11-10",
+    "completed": true
+  },
+  {
+    "id": 3,
+    "semesterId": "S1-2025",
+    "subject": "Mathematics",
+    "name": "Final Exam",
+    "date": "2026-01-08",
+    "completed": false
+  },
+  {
+    "id": 4,
+    "semesterId": "S1-2025",
+    "subject": "English",
+    "name": "Reading Test",
+    "date": "2025-10-05",
+    "completed": true
+  },
+  {
+    "id": 5,
+    "semesterId": "S1-2025",
+    "subject": "English",
+    "name": "Final Exam",
+    "date": "2026-01-10",
+    "completed": false
+  },
+  {
+    "id": 6,
+    "semesterId": "S1-2025",
+    "subject": "Physics",
+    "name": "Lab Assessment",
+    "date": "2025-10-15",
+    "completed": true
+  },
+  {
+    "id": 7,
+    "semesterId": "S1-2025",
+    "subject": "Physics",
+    "name": "Final Exam",
+    "date": "2026-01-12",
+    "completed": false
+  },
+  {
+    "id": 8,
+    "semesterId": "S1-2025",
+    "subject": "Chemistry",
+    "name": "Midterm Exam",
+    "date": "2025-11-12",
+    "completed": false
+  },
+  {
+    "id": 9,
+    "semesterId": "S1-2025",
+    "subject": "Chemistry",
+    "name": "Final Exam",
+    "date": "2026-01-13",
+    "completed": false
+  },
+  {
+    "id": 10,
+    "semesterId": "S1-2025",
+    "subject": "Literature",
+    "name": "Essay Assessment",
+    "date": "2025-10-20",
+    "completed": true
+  },
+  {
+    "id": 11,
+    "semesterId": "S1-2025",
+    "subject": "History",
+    "name": "Final Exam",
+    "date": "2026-01-14",
+    "completed": false
+  },
+  {
+    "id": 12,
+    "semesterId": "S1-2025",
+    "subject": "Biology",
+    "name": "Unit Test 1",
+    "date": "2025-09-30",
+    "completed": true
+  },
+  {
+    "id": 13,
+    "semesterId": "S1-2025",
+    "subject": "Biology",
+    "name": "Final Exam",
+    "date": "2026-01-11",
+    "completed": false
+  },
+  {
+    "id": 14,
+    "semesterId": "S2-2025",
+    "subject": "Mathematics",
+    "name": "Unit Test 1",
+    "date": "2026-02-20",
+    "completed": false
+  },
+  {
+    "id": 15,
+    "semesterId": "S2-2025",
+    "subject": "English",
+    "name": "Speaking Test",
+    "date": "2026-03-05",
+    "completed": false
+  }
+]

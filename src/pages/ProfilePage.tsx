@@ -8,6 +8,7 @@ import { useToast } from '../hooks/useToast'
 interface ProfileFormState {
   fullName: string
   address: string
+  phone: string
   age: string
   childEmail: string
 }
@@ -35,6 +36,7 @@ export function ProfilePage() {
   const [profile, setProfile] = useState<ProfileFormState>({
     fullName: currentUser?.fullName ?? '',
     address: currentUser?.address ?? '',
+    phone: currentUser?.phone ?? '',
     age: currentUser?.age?.toString() ?? '',
     childEmail: currentUser?.childEmail ?? '',
   })
@@ -59,6 +61,9 @@ export function ProfilePage() {
     const next: ProfileErrors = {}
     if (!profile.fullName.trim()) next.fullName = 'Full name is required.'
     if (!profile.address.trim()) next.address = 'Address is required.'
+    if (!profile.phone.trim()) next.phone = 'Phone number is required.'
+    else if (!/^[+\d][\d\s().-]{6,}$/.test(profile.phone.trim()))
+      next.phone = 'Enter a valid phone number.'
 
     if (currentUser.role === 'student') {
       const ageNumber = Number(profile.age)
@@ -92,6 +97,7 @@ export function ProfilePage() {
     const patch: Parameters<typeof updateUser>[1] = {
       fullName: profile.fullName.trim(),
       address: profile.address.trim(),
+      phone: profile.phone.trim(),
     }
     if (currentUser.role === 'student') {
       patch.age = Number(profile.age)
@@ -191,6 +197,15 @@ export function ProfilePage() {
             onChange={(event) => updateProfileField('address', event.target.value)}
             error={profileErrors.address}
             autoComplete="street-address"
+          />
+          <FormField
+            label="Phone Number"
+            name="phone"
+            type="tel"
+            value={profile.phone}
+            onChange={(event) => updateProfileField('phone', event.target.value)}
+            error={profileErrors.phone}
+            autoComplete="tel"
           />
           {currentUser.role === 'student' ? (
             <FormField

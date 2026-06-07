@@ -4,6 +4,7 @@ import type {
   AttendanceRecord,
   ChatGroup,
   ChatMessage,
+  Exam,
   Helpline,
   NewsItem,
   NotificationItem,
@@ -13,6 +14,7 @@ import type {
   RevisionClass,
   SchoolClass,
   ScoreDetail,
+  Semester,
   Subject,
   TestEvaluation,
   TimetableSlot,
@@ -25,6 +27,8 @@ interface DataContextValue {
   users: User[]
   classes: SchoolClass[]
   subjects: Subject[]
+  semesters: Semester[]
+  exams: Exam[]
   scores: ScoreDetail[]
   progress: ProgressDetail[]
   attendance: AttendanceRecord[]
@@ -44,6 +48,12 @@ interface DataContextValue {
   addClass: (schoolClass: SchoolClass) => void
   updateClass: (id: string, patch: Partial<Omit<SchoolClass, 'id'>>) => void
   deleteClass: (id: string) => void
+  addSemester: (semester: Semester) => void
+  updateSemester: (id: string, patch: Partial<Omit<Semester, 'id'>>) => void
+  deleteSemester: (id: string) => void
+  addExam: (exam: Omit<Exam, 'id'>) => void
+  updateExam: (id: number, patch: Partial<Omit<Exam, 'id'>>) => void
+  deleteExam: (id: number) => void
   addScore: (score: Omit<ScoreDetail, 'id'>) => void
   addProgress: (entry: Omit<ProgressDetail, 'id'>) => void
   addAttendance: (record: Omit<AttendanceRecord, 'id'>) => void
@@ -76,6 +86,8 @@ interface ChatFile {
 const KEYS = {
   users: 'estudiez.users',
   classes: 'estudiez.classes',
+  semesters: 'estudiez.semesters',
+  exams: 'estudiez.exams',
   scores: 'estudiez.scores',
   progress: 'estudiez.progress',
   attendance: 'estudiez.attendance',
@@ -108,6 +120,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<User[]>([])
   const [classes, setClasses] = useState<SchoolClass[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
+  const [semesters, setSemesters] = useState<Semester[]>([])
+  const [exams, setExams] = useState<Exam[]>([])
   const [scores, setScores] = useState<ScoreDetail[]>([])
   const [progress, setProgress] = useState<ProgressDetail[]>([])
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
@@ -133,6 +147,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
           baseUsers,
           baseClasses,
           baseSubjects,
+          baseSemesters,
+          baseExams,
           baseScores,
           baseProgress,
           baseAttendance,
@@ -149,6 +165,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
           cached<User[]>(KEYS.users, () => loadJson<User[]>('/data/users.json')),
           cached<SchoolClass[]>(KEYS.classes, () => loadJson<SchoolClass[]>('/data/classes.json')),
           loadJson<Subject[]>('/data/subjects.json'),
+          cached<Semester[]>(KEYS.semesters, () => loadJson<Semester[]>('/data/semesters.json')),
+          cached<Exam[]>(KEYS.exams, () => loadJson<Exam[]>('/data/exams.json')),
           cached<ScoreDetail[]>(KEYS.scores, () => loadJson<ScoreDetail[]>('/data/scores.json')),
           cached<ProgressDetail[]>(KEYS.progress, () =>
             loadJson<ProgressDetail[]>('/data/progress.json'),
@@ -182,6 +200,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setUsers(baseUsers)
         setClasses(baseClasses)
         setSubjects(baseSubjects)
+        setSemesters(baseSemesters)
+        setExams(baseExams)
         setScores(baseScores)
         setProgress(baseProgress)
         setAttendance(baseAttendance)
@@ -220,6 +240,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!loading) window.localStorage.setItem(KEYS.classes, JSON.stringify(classes))
   }, [classes, loading])
+  useEffect(() => {
+    if (!loading) window.localStorage.setItem(KEYS.semesters, JSON.stringify(semesters))
+  }, [semesters, loading])
+  useEffect(() => {
+    if (!loading) window.localStorage.setItem(KEYS.exams, JSON.stringify(exams))
+  }, [exams, loading])
   useEffect(() => {
     if (!loading) window.localStorage.setItem(KEYS.scores, JSON.stringify(scores))
   }, [scores, loading])
@@ -287,6 +313,32 @@ export function DataProvider({ children }: { children: ReactNode }) {
     (id: string) => setClasses((prev) => prev.filter((c) => c.id !== id)),
     [],
   )
+  const addSemester = useCallback(
+    (semester: Semester) => setSemesters((prev) => [...prev, semester]),
+    [],
+  )
+  const updateSemester = useCallback(
+    (id: string, patch: Partial<Omit<Semester, 'id'>>) =>
+      setSemesters((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s))),
+    [],
+  )
+  const deleteSemester = useCallback((id: string) => {
+    setSemesters((prev) => prev.filter((s) => s.id !== id))
+    setExams((prev) => prev.filter((e) => e.semesterId !== id))
+  }, [])
+  const addExam = useCallback(
+    (exam: Omit<Exam, 'id'>) => setExams((prev) => [...prev, { ...exam, id: nextId(prev) }]),
+    [],
+  )
+  const updateExam = useCallback(
+    (id: number, patch: Partial<Omit<Exam, 'id'>>) =>
+      setExams((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e))),
+    [],
+  )
+  const deleteExam = useCallback(
+    (id: number) => setExams((prev) => prev.filter((e) => e.id !== id)),
+    [],
+  )
   const addScore = useCallback(
     (score: Omit<ScoreDetail, 'id'>) =>
       setScores((prev) => [...prev, { ...score, id: nextId(prev) }]),
@@ -352,6 +404,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           email: request.email,
           fullName: request.fullName,
           address: request.address,
+          phone: request.phone,
           password: request.password,
           role: request.role,
           age: request.age,
@@ -379,6 +432,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       users,
       classes,
       subjects,
+      semesters,
+      exams,
       scores,
       progress,
       attendance,
@@ -397,6 +452,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addClass,
       updateClass,
       deleteClass,
+      addSemester,
+      updateSemester,
+      deleteSemester,
+      addExam,
+      updateExam,
+      deleteExam,
       addScore,
       addProgress,
       addAttendance,
@@ -417,6 +478,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       users,
       classes,
       subjects,
+      semesters,
+      exams,
       scores,
       progress,
       attendance,
@@ -435,6 +498,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addClass,
       updateClass,
       deleteClass,
+      addSemester,
+      updateSemester,
+      deleteSemester,
+      addExam,
+      updateExam,
+      deleteExam,
       addScore,
       addProgress,
       addAttendance,

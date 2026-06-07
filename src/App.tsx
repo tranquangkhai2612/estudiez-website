@@ -6,6 +6,8 @@ import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { UserDetailPage } from './pages/UserDetailPage'
+import { ClassDetailPage } from './pages/ClassDetailPage'
 import { FeedbackPage } from './pages/FeedbackPage'
 import { ContactPage } from './pages/ContactPage'
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -30,6 +32,22 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="users/:email"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <UserDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="classes/:classId"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <ClassDetailPage />
             </ProtectedRoute>
           }
         />

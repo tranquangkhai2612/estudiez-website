@@ -38,6 +38,25 @@ export interface Subject {
   name: string
 }
 
+/** An academic semester shared across all classes. */
+export interface Semester {
+  id: string
+  name: string
+  year: string
+  startDate: string
+  endDate: string
+}
+
+/** A planned assessment for a subject within a semester. A subject can have many. */
+export interface Exam {
+  id: number
+  semesterId: string
+  subject: string
+  name: string
+  date: string
+  completed: boolean
+}
+
 /** Mark report — điểm môn học. */
 export interface ScoreDetail {
   id: number
@@ -171,6 +190,7 @@ export interface RegistrationRequest {
   email: string
   fullName: string
   address: string
+  phone?: string
   password: string
   role: Role
   age?: number
