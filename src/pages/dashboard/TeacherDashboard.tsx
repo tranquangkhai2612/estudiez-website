@@ -29,6 +29,83 @@ const PERIOD_TIME: Record<number, string> = {
   10: '16:20–17:05',
 }
 
+interface SubjectMeta {
+  icon: string
+  emoji: string
+  color: string
+  bg: string
+  border: string
+  desc: string
+}
+
+const SUBJECT_META: Record<string, SubjectMeta> = {
+  Mathematics: {
+    icon: '📐',
+    emoji: '📐',
+    color: 'text-indigo-700',
+    bg: 'from-indigo-50 to-blue-50',
+    border: 'border-indigo-200',
+    desc: 'Algebra, Calculus & Geometry',
+  },
+  Physics: {
+    icon: '⚛️',
+    emoji: '⚛️',
+    color: 'text-violet-700',
+    bg: 'from-violet-50 to-purple-50',
+    border: 'border-violet-200',
+    desc: 'Mechanics, Waves & Thermodynamics',
+  },
+  Chemistry: {
+    icon: '🧪',
+    emoji: '🧪',
+    color: 'text-emerald-700',
+    bg: 'from-emerald-50 to-teal-50',
+    border: 'border-emerald-200',
+    desc: 'Organic, Inorganic & Physical Chemistry',
+  },
+  Biology: {
+    icon: '🌿',
+    emoji: '🌿',
+    color: 'text-green-700',
+    bg: 'from-green-50 to-lime-50',
+    border: 'border-green-200',
+    desc: 'Cells, Genetics & Ecology',
+  },
+  English: {
+    icon: '🌐',
+    emoji: '🌐',
+    color: 'text-sky-700',
+    bg: 'from-sky-50 to-cyan-50',
+    border: 'border-sky-200',
+    desc: 'Grammar, Reading & Communication',
+  },
+  Literature: {
+    icon: '📖',
+    emoji: '📖',
+    color: 'text-rose-700',
+    bg: 'from-rose-50 to-pink-50',
+    border: 'border-rose-200',
+    desc: 'Poetry, Prose & Literary Analysis',
+  },
+  History: {
+    icon: '🏛️',
+    emoji: '🏛️',
+    color: 'text-amber-700',
+    bg: 'from-amber-50 to-yellow-50',
+    border: 'border-amber-200',
+    desc: 'Ancient to Modern World History',
+  },
+}
+
+const DEFAULT_META: SubjectMeta = {
+  icon: '📚',
+  emoji: '📚',
+  color: 'text-slate-700',
+  bg: 'from-slate-50 to-slate-100',
+  border: 'border-slate-200',
+  desc: 'Academic Subject',
+}
+
 function getMonday(date: Date): Date {
   const d = new Date(date)
   const day = d.getDay()
@@ -36,6 +113,14 @@ function getMonday(date: Date): Date {
   d.setDate(diff)
   d.setHours(0, 0, 0, 0)
   return d
+}
+
+/** Format a Date as YYYY-MM-DD using LOCAL time (avoids UTC offset shifting the date). */
+function localDateStr(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 export function TeacherDashboard() {
@@ -76,17 +161,30 @@ export function TeacherDashboard() {
     [chatGroups, teacherClassIds],
   )
 
+  const meta = SUBJECT_META[subject] ?? DEFAULT_META
+  const totalStudents = myStudents.length
+
   return (
     <div className="space-y-4">
-      <Card title="My Teaching" description={`Subject: ${subject || '—'}`}>
-        <p className="text-sm text-slate-600">
-          You teach{' '}
-          <span className="font-semibold">
-            {teacherClassIds.length > 0 ? teacherClassIds.join(', ') : 'no classes yet'}
-          </span>
-          .
-        </p>
-      </Card>
+      {/* Subject hero banner */}
+      <div className={`rounded-xl border ${meta.border} bg-gradient-to-r ${meta.bg} px-5 py-4 flex items-center gap-4`}>
+        <div className="text-5xl select-none">{meta.emoji}</div>
+        <div className="flex-1 min-w-0">
+          <h2 className={`text-xl font-bold ${meta.color}`}>{subject || '—'}</h2>
+          <p className="text-sm text-slate-500 mt-0.5">{meta.desc}</p>
+          <div className="flex flex-wrap gap-3 mt-2">
+            <span className="inline-flex items-center gap-1 text-xs font-medium bg-white/70 border border-slate-200 rounded-full px-2.5 py-0.5 text-slate-700">
+              🏫 {teacherClassIds.length > 0 ? teacherClassIds.join(', ') : 'No classes'}
+            </span>
+            <span className="inline-flex items-center gap-1 text-xs font-medium bg-white/70 border border-slate-200 rounded-full px-2.5 py-0.5 text-slate-700">
+              👥 {totalStudents} student{totalStudents !== 1 ? 's' : ''}
+            </span>
+            <span className="inline-flex items-center gap-1 text-xs font-medium bg-white/70 border border-slate-200 rounded-full px-2.5 py-0.5 text-slate-700">
+              👤 {currentUser?.fullName ?? '—'}
+            </span>
+          </div>
+        </div>
+      </div>
 
       <Tabs
         tabs={[
@@ -103,13 +201,14 @@ export function TeacherDashboard() {
           },
           {
             id: 'marks',
-            label: 'Marks',
-            content: <ScoreForm subject={subject} students={myStudents} />,
-          },
-          {
-            id: 'evaluation',
-            label: 'Evaluation + AI',
-            content: <EvaluationForm subject={subject} students={myStudents} />,
+            label: 'Marks & Evaluation',
+            content: (
+              <MarksEvalTab
+                subject={subject}
+                classIds={teacherClassIds}
+                studentsByClass={studentsByClass}
+              />
+            ),
           },
           {
             id: 'resources',
@@ -181,7 +280,7 @@ function AttendanceTab({ subject, classIds, studentsByClass }: AttendanceTabProp
   const dateForDay = (day: DayOfWeek): string => {
     const d = new Date(weekStart)
     d.setDate(d.getDate() + DAY_OFFSET[day])
-    return d.toISOString().slice(0, 10)
+    return localDateStr(d)
   }
 
   const isAlreadyTaken = (slot: TimetableSlot): boolean => {
@@ -234,7 +333,7 @@ function AttendanceTab({ subject, classIds, studentsByClass }: AttendanceTabProp
       mon.setDate(mon.getDate() + (i - 4) * 7)
       const sat = new Date(mon)
       sat.setDate(sat.getDate() + 5)
-      return { value: mon.toISOString().slice(0, 10), label: `${fmtOpt(mon)} – ${fmtOpt(sat)}` }
+      return { value: localDateStr(mon), label: `${fmtOpt(mon)} – ${fmtOpt(sat)}` }
     })
   }, [])
 
@@ -252,7 +351,7 @@ function AttendanceTab({ subject, classIds, studentsByClass }: AttendanceTabProp
           ←
         </button>
         <select
-          value={weekStart.toISOString().slice(0, 10)}
+          value={localDateStr(weekStart)}
           onChange={(e) => {
             setActiveSlot(null)
             setWeekStart(new Date(e.target.value + 'T00:00:00'))
@@ -332,8 +431,11 @@ function AttendanceTab({ subject, classIds, studentsByClass }: AttendanceTabProp
                                 : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
                           }`}
                         >
-                          <div className="font-semibold leading-tight">{slot.classId}</div>
-                          <div className="text-slate-400">{slot.room}</div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm">{(SUBJECT_META[slot.subject] ?? DEFAULT_META).emoji}</span>
+                            <span className="font-semibold leading-tight text-xs">{slot.classId}</span>
+                          </div>
+                          <div className="text-slate-400 text-[10px]">{slot.room}</div>
                           {taken && (
                             <div className="text-emerald-600 font-medium text-[10px] mt-0.5">✓ Done</div>
                           )}
@@ -360,13 +462,16 @@ function AttendanceTab({ subject, classIds, studentsByClass }: AttendanceTabProp
           >
             {/* Modal header */}
             <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-200">
-              <div>
-                <h2 className="font-semibold text-slate-800">
-                  Take Attendance — {activeSlot.classId}
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {activeSlot.subject} · Period {activeSlot.period} ({PERIOD_TIME[activeSlot.period] ?? ''}) · {dateForDay(activeSlot.day)} · {activeSlot.room}
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="text-3xl select-none">{(SUBJECT_META[activeSlot.subject] ?? DEFAULT_META).emoji}</div>
+                <div>
+                  <h2 className="font-semibold text-slate-800">
+                    Take Attendance — {activeSlot.classId}
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {activeSlot.subject} · Period {activeSlot.period} ({PERIOD_TIME[activeSlot.period] ?? ''}) · {dateForDay(activeSlot.day)} · {activeSlot.room}
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setActiveSlot(null)}
@@ -433,226 +538,410 @@ function AttendanceTab({ subject, classIds, studentsByClass }: AttendanceTabProp
   )
 }
 
-interface ScoreFormState {
-  studentEmail: string
-  testId: string
-  description: string
-  date: string
-  scoreReceived: string
-}
-
-const SCORE_INITIAL: ScoreFormState = {
-  studentEmail: '',
-  testId: '',
-  description: '',
-  date: '',
-  scoreReceived: '',
-}
-
-function ScoreForm({ subject, students }: { subject: string; students: User[] }) {
-  const { addScore } = useData()
-  const { push } = useToast()
-  const [form, setForm] = useState<ScoreFormState>({
-    ...SCORE_INITIAL,
-    studentEmail: students[0]?.email ?? '',
-  })
-  const [errors, setErrors] = useState<Partial<Record<keyof ScoreFormState, string>>>({})
-
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const next: Partial<Record<keyof ScoreFormState, string>> = {}
-    if (!form.studentEmail) next.studentEmail = 'Select a student.'
-    if (!form.testId.trim()) next.testId = 'Test ID is required.'
-    if (!form.description.trim()) next.description = 'Description is required.'
-    if (!form.date) next.date = 'Date is required.'
-    const scoreNumber = Number(form.scoreReceived)
-    if (!form.scoreReceived) next.scoreReceived = 'Score is required.'
-    else if (Number.isNaN(scoreNumber) || scoreNumber < 0 || scoreNumber > 100)
-      next.scoreReceived = 'Score must be between 0 and 100.'
-
-    setErrors(next)
-    if (Object.keys(next).length > 0) return
-
-    const student = students.find((s) => s.email === form.studentEmail)
-    addScore({
-      studentEmail: form.studentEmail,
-      classId: student?.classId ?? '',
-      subject,
-      testId: form.testId,
-      description: form.description,
-      date: form.date,
-      scoreReceived: scoreNumber,
-    })
-    setForm({ ...SCORE_INITIAL, studentEmail: form.studentEmail })
-    push('success', 'Mark saved.')
-  }
-
-  return (
-    <Card title="Update Mark Report" description={`Subject: ${subject}`}>
-      <form onSubmit={submit} noValidate className="space-y-4">
-        <FormField
-          as="select"
-          label="Student"
-          name="scoreStudent"
-          value={form.studentEmail}
-          onChange={(e) => setForm((p) => ({ ...p, studentEmail: e.target.value }))}
-          error={errors.studentEmail}
-        >
-          <option value="">Select a student</option>
-          {students.map((student) => (
-            <option key={student.email} value={student.email}>
-              {student.fullName} · {student.classId}
-            </option>
-          ))}
-        </FormField>
-        <FormField
-          label="Test ID"
-          name="scoreTestId"
-          value={form.testId}
-          onChange={(e) => setForm((p) => ({ ...p, testId: e.target.value }))}
-          error={errors.testId}
-        />
-        <FormField
-          label="Description"
-          name="scoreDescription"
-          value={form.description}
-          onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-          error={errors.description}
-        />
-        <FormField
-          label="Date"
-          name="scoreDate"
-          type="date"
-          value={form.date}
-          onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
-          error={errors.date}
-        />
-        <FormField
-          label="Score"
-          name="scoreValue"
-          type="number"
-          min={0}
-          max={100}
-          value={form.scoreReceived}
-          onChange={(e) => setForm((p) => ({ ...p, scoreReceived: e.target.value }))}
-          error={errors.scoreReceived}
-        />
-        <button
-          type="submit"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
-        >
-          Save Mark
-        </button>
-      </form>
-    </Card>
-  )
-}
-
-interface EvaluationFormState {
-  studentEmail: string
-  testId: string
+interface StudentEntry {
+  score: string
+  performanceLevel: string
+  topicsMastered: string
+  topicsToImprove: string
   strengths: string
   weaknesses: string
+  studyHabits: string
+  teacherNotes: string
 }
 
-const EVALUATION_INITIAL: EvaluationFormState = {
-  studentEmail: '',
-  testId: '',
+const ENTRY_INITIAL: StudentEntry = {
+  score: '',
+  performanceLevel: 'average',
+  topicsMastered: '',
+  topicsToImprove: '',
   strengths: '',
   weaknesses: '',
+  studyHabits: 'consistent',
+  teacherNotes: '',
 }
 
-function EvaluationForm({ subject, students }: { subject: string; students: User[] }) {
-  const { addEvaluation } = useData()
+const PERFORMANCE_LEVELS: { value: string; label: string }[] = [
+  { value: 'excellent', label: 'Excellent (9–10)' },
+  { value: 'good', label: 'Good (7–8.9)' },
+  { value: 'average', label: 'Average (5–6.9)' },
+  { value: 'below-average', label: 'Below Average (3.5–4.9)' },
+  { value: 'poor', label: 'Poor (< 3.5)' },
+]
+
+const STUDY_HABITS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'consistent', label: 'Consistent — regular homework & attendance' },
+  { value: 'irregular', label: 'Irregular — sometimes misses work or class' },
+  { value: 'needs-work', label: 'Needs Work — rarely completes assignments' },
+]
+
+
+function buildAIPath(f: StudentEntry, examName: string): string {
+  const perf = PERFORMANCE_LEVELS.find((p) => p.value === f.performanceLevel)?.label ?? f.performanceLevel
+  const habits = STUDY_HABITS_OPTIONS.find((h) => h.value === f.studyHabits)?.label ?? f.studyHabits
+  const scoreStr = f.score ? ` | Score: ${f.score}/10` : ''
+  return [
+    `📊 Performance: ${perf}${scoreStr} | Exam: ${examName}`,
+    '',
+    `✅ Strengths: ${f.strengths}`,
+    f.topicsMastered ? `🎯 Topics mastered: ${f.topicsMastered}` : '',
+    '',
+    `⚠️ Areas to improve: ${f.weaknesses}`,
+    f.topicsToImprove ? `📌 Priority topics: ${f.topicsToImprove}` : '',
+    '',
+    `📚 Recommended study plan:`,
+    `  • Week 1–2: Focused daily practice on "${f.topicsToImprove || f.weaknesses}" (30 min/day)`,
+    `  • Week 3–4: Mixed exercises reinforcing "${f.topicsMastered || f.strengths}"`,
+    `  • End of month: Re-test on priority topics`,
+    '',
+    `🧑‍💼 Study habits: ${habits}`,
+    f.studyHabits !== 'consistent'
+      ? `  → Recommendation: Set a fixed daily study schedule and track completion.`
+      : `  → Great consistency — keep it up!`,
+    f.teacherNotes ? `\n📝 Teacher notes: ${f.teacherNotes}` : '',
+  ].filter(Boolean).join('\n')
+}
+
+function MarksEvalTab({
+  subject,
+  classIds,
+  studentsByClass,
+}: {
+  subject: string
+  classIds: string[]
+  studentsByClass: Map<string, User[]>
+}) {
+  const { semesters, exams, addScore, addEvaluation } = useData()
   const { currentUser } = useAuth()
   const { push } = useToast()
-  const [form, setForm] = useState<EvaluationFormState>({
-    ...EVALUATION_INITIAL,
-    studentEmail: students[0]?.email ?? '',
-  })
-  const [errors, setErrors] = useState<Partial<Record<keyof EvaluationFormState, string>>>({})
 
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const next: Partial<Record<keyof EvaluationFormState, string>> = {}
-    if (!form.studentEmail) next.studentEmail = 'Select a student.'
-    if (!form.testId.trim()) next.testId = 'Test ID is required.'
-    if (!form.strengths.trim()) next.strengths = 'Describe the strengths.'
-    if (!form.weaknesses.trim()) next.weaknesses = 'Describe the weaknesses.'
+  const [semesterId, setSemesterId] = useState(semesters[0]?.id ?? '')
+  const [classId, setClassId] = useState(classIds[0] ?? '')
+  const [examId, setExamId] = useState<number | ''>('')
+  const [entries, setEntries] = useState<Record<string, StudentEntry>>({})
+  const [scoreErrors, setScoreErrors] = useState<Record<string, string>>({})
+  const [expandedEmail, setExpandedEmail] = useState<string | null>(null)
 
-    setErrors(next)
+  const availableExams = useMemo(
+    () => exams.filter((e) => e.semesterId === semesterId && e.subject === subject),
+    [exams, semesterId, subject],
+  )
+  const selectedExam = availableExams.find((e) => e.id === examId)
+  const students = studentsByClass.get(classId) ?? []
+
+  const getEntry = (email: string): StudentEntry => entries[email] ?? ENTRY_INITIAL
+
+  const updateEntry = (email: string, patch: Partial<StudentEntry>) => {
+    setEntries((p) => ({ ...p, [email]: { ...(p[email] ?? ENTRY_INITIAL), ...patch } }))
+    if ('score' in patch)
+      setScoreErrors((p) => { const n = { ...p }; delete n[email]; return n })
+  }
+
+  const resetEntries = () => {
+    setEntries({})
+    setScoreErrors({})
+    setExpandedEmail(null)
+  }
+
+  const saveAll = () => {
+    if (!examId) { push('error', 'Select an exam first.'); return }
+    const next: Record<string, string> = {}
+    for (const s of students) {
+      const raw = getEntry(s.email).score
+      if (raw === '') { next[s.email] = 'Required'; continue }
+      const n = Number(raw)
+      if (Number.isNaN(n) || n < 0 || n > 10) next[s.email] = '0–10'
+    }
+    setScoreErrors(next)
     if (Object.keys(next).length > 0) return
 
-    // Mock "AI" suggestion derived from the teacher's evaluation.
-    const suggestedPath = `AI suggestion: Focus on "${form.weaknesses.trim()}". Practice 4-5 targeted exercises daily for 2 weeks, reinforce "${form.strengths.trim()}", then re-test.`
-
-    addEvaluation({
-      studentEmail: form.studentEmail,
-      subject,
-      testId: form.testId.trim(),
-      strengths: form.strengths.trim(),
-      weaknesses: form.weaknesses.trim(),
-      suggestedPath,
-      teacher: currentUser?.fullName ?? 'Teacher',
+    let evalCount = 0
+    students.forEach((student) => {
+      const entry = getEntry(student.email)
+      addScore({
+        studentEmail: student.email,
+        classId,
+        subject,
+        testId: String(examId),
+        description: selectedExam?.name ?? '',
+        date: selectedExam?.date ?? localDateStr(new Date()),
+        scoreReceived: Number(entry.score),
+      })
+      if (entry.strengths.trim() && entry.weaknesses.trim()) {
+        evalCount++
+        addEvaluation({
+          studentEmail: student.email,
+          subject,
+          testId: String(examId),
+          score: Number(entry.score),
+          performanceLevel: entry.performanceLevel as 'excellent' | 'good' | 'average' | 'below-average' | 'poor',
+          topicsMastered: entry.topicsMastered.trim() || undefined,
+          topicsToImprove: entry.topicsToImprove.trim() || undefined,
+          studyHabits: entry.studyHabits as 'consistent' | 'irregular' | 'needs-work',
+          teacherNotes: entry.teacherNotes.trim() || undefined,
+          strengths: entry.strengths.trim(),
+          weaknesses: entry.weaknesses.trim(),
+          suggestedPath: buildAIPath(entry, selectedExam?.name ?? ''),
+          teacher: currentUser?.fullName ?? 'Teacher',
+        })
+      }
     })
-    setForm({ ...EVALUATION_INITIAL, studentEmail: form.studentEmail })
-    push('success', 'Evaluation saved. AI learning path generated for the student.')
+    resetEntries()
+    push(
+      'success',
+      evalCount > 0
+        ? `Marks + ${evalCount} evaluation(s) saved for ${students.length} students.`
+        : `Marks saved for ${students.length} students.`,
+    )
   }
 
   return (
-    <Card
-      title="Detailed Test Evaluation"
-      description="Your evaluation generates an AI-suggested learning path for the student."
-    >
-      <form onSubmit={submit} noValidate className="space-y-4">
-        <FormField
-          as="select"
-          label="Student"
-          name="evalStudent"
-          value={form.studentEmail}
-          onChange={(e) => setForm((p) => ({ ...p, studentEmail: e.target.value }))}
-          error={errors.studentEmail}
-        >
-          <option value="">Select a student</option>
-          {students.map((student) => (
-            <option key={student.email} value={student.email}>
-              {student.fullName} · {student.classId}
-            </option>
-          ))}
-        </FormField>
-        <FormField
-          label="Test ID"
-          name="evalTestId"
-          value={form.testId}
-          onChange={(e) => setForm((p) => ({ ...p, testId: e.target.value }))}
-          error={errors.testId}
-        />
-        <FormField
-          as="textarea"
-          label="Strengths"
-          name="evalStrengths"
-          rows={2}
-          value={form.strengths}
-          onChange={(e) => setForm((p) => ({ ...p, strengths: e.target.value }))}
-          error={errors.strengths}
-        />
-        <FormField
-          as="textarea"
-          label="Weaknesses"
-          name="evalWeaknesses"
-          rows={2}
-          value={form.weaknesses}
-          onChange={(e) => setForm((p) => ({ ...p, weaknesses: e.target.value }))}
-          error={errors.weaknesses}
-        />
-        <button
-          type="submit"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
-        >
-          Save & Generate AI Path
-        </button>
-      </form>
-    </Card>
+    <div className="space-y-4">
+      <Card title="Marks & Evaluation" description={`Subject: ${subject}`}>
+        <div className="grid sm:grid-cols-3 gap-3">
+          <FormField
+            as="select" label="Semester" name="mesSemester" value={semesterId}
+            onChange={(e) => { setSemesterId(e.target.value); setExamId(''); resetEntries() }}
+          >
+            {semesters.map((s) => (
+              <option key={s.id} value={s.id}>{s.name} ({s.year})</option>
+            ))}
+          </FormField>
+          <FormField
+            as="select" label="Class" name="mesClass" value={classId}
+            onChange={(e) => { setClassId(e.target.value); resetEntries() }}
+          >
+            {classIds.map((id) => <option key={id} value={id}>{id}</option>)}
+          </FormField>
+          <FormField
+            as="select" label="Exam" name="mesExam" value={examId}
+            onChange={(e) => { setExamId(e.target.value ? Number(e.target.value) : ''); resetEntries() }}
+          >
+            <option value="">Select exam…</option>
+            {availableExams.map((ex) => (
+              <option key={ex.id} value={ex.id}>{ex.name} · {ex.date}</option>
+            ))}
+          </FormField>
+        </div>
+      </Card>
+
+      {!examId ? (
+        <p className="text-sm text-slate-500">
+          {availableExams.length === 0
+            ? 'No exams found for this semester and subject.'
+            : 'Select an exam to enter marks and evaluations.'}
+        </p>
+      ) : students.length === 0 ? (
+        <p className="text-sm text-slate-500">No students in this class.</p>
+      ) : (
+        <>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-slate-700">
+              {selectedExam?.name} · {selectedExam?.date}
+            </p>
+            <span className="text-xs text-slate-400">
+              {students.length} students · click Evaluate to add per-student evaluation
+            </span>
+          </div>
+          <ul className="space-y-1">
+            {students.map((student, idx) => {
+              const entry = getEntry(student.email)
+              const hasEval = !!(entry.strengths.trim() && entry.weaknesses.trim())
+              return (
+                <li
+                  key={student.email}
+                  className="flex items-center gap-3 border border-slate-200 rounded-xl px-3 py-2 hover:bg-slate-50"
+                >
+                  <span className="text-xs text-slate-400 w-5 text-right">{idx + 1}.</span>
+                  <span className="font-medium text-slate-800 text-sm flex-1">{student.fullName}</span>
+                  {hasEval && (
+                    <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                      ✓ Evaluated
+                    </span>
+                  )}
+                  {entry.score !== '' && (
+                    <span className="text-xs font-mono text-slate-500 tabular-nums">{entry.score}/10</span>
+                  )}
+                  <button
+                    onClick={() => setExpandedEmail(student.email)}
+                    className="text-xs font-medium text-indigo-600 hover:text-indigo-800 border border-indigo-200 hover:border-indigo-400 rounded-md px-2 py-1 bg-indigo-50 hover:bg-indigo-100 whitespace-nowrap"
+                  >
+                    {hasEval ? '✏️ Edit' : '+ Evaluate'}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          <button
+            onClick={saveAll}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2 text-sm"
+          >
+            Save All Marks &amp; Evaluations
+          </button>
+        </>
+      )}
+
+      {/* Evaluation modal */}
+      {expandedEmail && (() => {
+        const modalStudent = students.find((s) => s.email === expandedEmail)
+        const entry = getEntry(expandedEmail)
+        const aiPreview = entry.strengths.trim() && entry.weaknesses.trim() && selectedExam
+          ? buildAIPath(entry, selectedExam.name)
+          : ''
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setExpandedEmail(null)}
+          >
+            <div
+              className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal header */}
+              <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200">
+                <div>
+                  <h2 className="font-semibold text-slate-800">
+                    Evaluation — {modalStudent?.fullName}
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {selectedExam?.name} · {selectedExam?.date} · {subject}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setExpandedEmail(null)}
+                  className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Modal body */}
+              <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+                {/* Score */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Score (0–10) <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      max={10}
+                      step={0.1}
+                      value={entry.score}
+                      onChange={(e) => updateEntry(expandedEmail, { score: e.target.value })}
+                      placeholder="e.g. 8.5"
+                      className={`w-32 rounded-md border px-3 py-1.5 text-sm ${
+                        scoreErrors[expandedEmail] ? 'border-rose-400 bg-rose-50' : 'border-slate-300'
+                      }`}
+                    />
+                    <span className="text-xs text-slate-400">out of 10</span>
+                  </div>
+                  {scoreErrors[expandedEmail] && (
+                    <p className="text-xs text-rose-500 mt-1">{scoreErrors[expandedEmail]}</p>
+                  )}
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <FormField
+                    as="select"
+                    label="Performance Level"
+                    name={`perf-${expandedEmail}`}
+                    value={entry.performanceLevel}
+                    onChange={(e) => updateEntry(expandedEmail, { performanceLevel: e.target.value })}
+                  >
+                    {PERFORMANCE_LEVELS.map((p) => (
+                      <option key={p.value} value={p.value}>{p.label}</option>
+                    ))}
+                  </FormField>
+                  <FormField
+                    as="select"
+                    label="Study Habits"
+                    name={`habits-${expandedEmail}`}
+                    value={entry.studyHabits}
+                    onChange={(e) => updateEntry(expandedEmail, { studyHabits: e.target.value })}
+                  >
+                    {STUDY_HABITS_OPTIONS.map((h) => (
+                      <option key={h.value} value={h.value}>{h.label}</option>
+                    ))}
+                  </FormField>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <FormField
+                    as="textarea"
+                    label="Topics Mastered"
+                    name={`mastered-${expandedEmail}`}
+                    rows={2}
+                    hint="Skills clearly grasped"
+                    value={entry.topicsMastered}
+                    onChange={(e) => updateEntry(expandedEmail, { topicsMastered: e.target.value })}
+                  />
+                  <FormField
+                    as="textarea"
+                    label="Topics to Improve"
+                    name={`improve-${expandedEmail}`}
+                    rows={2}
+                    hint="Skills needing more practice"
+                    value={entry.topicsToImprove}
+                    onChange={(e) => updateEntry(expandedEmail, { topicsToImprove: e.target.value })}
+                  />
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <FormField
+                    as="textarea"
+                    label="Strengths *"
+                    name={`str-${expandedEmail}`}
+                    rows={3}
+                    value={entry.strengths}
+                    onChange={(e) => updateEntry(expandedEmail, { strengths: e.target.value })}
+                  />
+                  <FormField
+                    as="textarea"
+                    label="Weaknesses / Gaps *"
+                    name={`weak-${expandedEmail}`}
+                    rows={3}
+                    value={entry.weaknesses}
+                    onChange={(e) => updateEntry(expandedEmail, { weaknesses: e.target.value })}
+                  />
+                </div>
+                <FormField
+                  as="textarea"
+                  label="Teacher Notes (private)"
+                  name={`notes-${expandedEmail}`}
+                  rows={2}
+                  value={entry.teacherNotes}
+                  onChange={(e) => updateEntry(expandedEmail, { teacherNotes: e.target.value })}
+                />
+                {aiPreview && (
+                  <div>
+                    <p className="text-xs font-semibold text-indigo-600 mb-1">🤖 AI Path Preview</p>
+                    <pre className="whitespace-pre-wrap text-[11px] text-slate-600 font-mono bg-slate-50 rounded-lg p-3 border border-slate-200 leading-relaxed max-h-48 overflow-y-auto">
+                      {aiPreview}
+                    </pre>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal footer */}
+              <div className="flex gap-2 px-5 py-4 border-t border-slate-200">
+                <button
+                  onClick={() => setExpandedEmail(null)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2 text-sm"
+                >
+                  Done
+                </button>
+                <button
+                  onClick={() => setExpandedEmail(null)}
+                  className="border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium rounded-md px-4 py-2 text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+    </div>
   )
 }
 

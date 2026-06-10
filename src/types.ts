@@ -131,6 +131,18 @@ export interface TestEvaluation {
   studentEmail: string
   subject: string
   testId: string
+  /** Actual score on this test (0–10 scale) */
+  score?: number
+  /** Overall performance tier */
+  performanceLevel?: 'excellent' | 'good' | 'average' | 'below-average' | 'poor'
+  /** Topics / skills the student has clearly mastered */
+  topicsMastered?: string
+  /** Topics / skills the student needs to work on */
+  topicsToImprove?: string
+  /** Teacher’s observation of study habits */
+  studyHabits?: 'consistent' | 'irregular' | 'needs-work'
+  /** Additional private teacher notes */
+  teacherNotes?: string
   strengths: string
   weaknesses: string
   suggestedPath: string

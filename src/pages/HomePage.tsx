@@ -1,158 +1,130 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useData } from '../hooks/useData'
 
-interface SiteLink {
-  to: string
-  label: string
-  description: string
+const CATEGORY_STYLE: Record<string, string> = {
+  Announcement: 'bg-indigo-100 text-indigo-700',
+  Event: 'bg-emerald-100 text-emerald-700',
+  Notice: 'bg-amber-100 text-amber-700',
 }
 
-const SITEMAP: { heading: string; links: SiteLink[] }[] = [
-  {
-    heading: 'Get Started',
-    links: [
-      { to: '/register', label: 'Register', description: 'Demo signup (real accounts are issued by the school)' },
-      { to: '/login', label: 'Login', description: 'Access your role-based dashboard' },
-    ],
-  },
-  {
-    heading: 'Your Workspace',
-    links: [
-      { to: '/dashboard', label: 'Dashboard', description: 'Timetable, marks, attendance, resources, chat' },
-      { to: '/profile', label: 'Profile', description: 'Update personal details and password' },
-    ],
-  },
-  {
-    heading: 'Support',
-    links: [
-      { to: '/feedback', label: 'Feedback', description: 'Send petitions and suggestions to the school' },
-      { to: '/contact', label: 'Contact Us', description: 'Reach the school / developer team' },
-    ],
-  },
-]
-
-const FEATURES: { title: string; description: string }[] = [
-  { title: 'Academic Progress', description: 'Marks, attendance, class & weekly timetables.' },
-  { title: 'Study Resources', description: 'Subject images, videos, and PDF documents.' },
-  { title: 'Revision Classes', description: 'Out-of-hours extra classes you can enroll in.' },
-  { title: 'News & Notifications', description: 'School news plus class/student/parent alerts.' },
-  { title: 'Class Chat Groups', description: 'Student–teacher and parent–teacher group chats.' },
-  { title: 'AI Learning Paths', description: 'Teacher evaluations turned into study suggestions.' },
+const QUICK_LINKS = [
+  { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
+  { to: '/profile', label: 'Profile', icon: '👤' },
+  { to: '/feedback', label: 'Feedback', icon: '💬' },
+  { to: '/contact', label: 'Contact', icon: '📞' },
 ]
 
 export function HomePage() {
   const { currentUser } = useAuth()
+  const { news, helplines } = useData()
+
+  const latestNews = [...news].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5)
 
   return (
-    <div className="space-y-8">
-      <section className="bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-2xl p-8 shadow-lg">
-        <p className="uppercase tracking-widest text-xs font-semibold text-indigo-100">
-          High School Study-Progress Hub
-        </p>
-        <h1 className="text-3xl sm:text-4xl font-extrabold mt-2">
-          Track. Teach. Together.
-        </h1>
-        <p className="mt-3 max-w-2xl text-indigo-50">
-          eStudiez gives the board of management, subject teachers, students, and parents one
-          place to follow marks and attendance, share study resources, manage revision classes,
-          read school news, and chat by class.
-        </p>
-        <div className="mt-5 flex flex-wrap gap-3">
+    <div className="space-y-6">
+      {/* Compact hero */}
+      <section className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl px-6 py-5 flex items-center justify-between gap-4 flex-wrap shadow">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-indigo-200">eStudiez</p>
+          <h1 className="text-2xl font-extrabold mt-0.5">Track. Teach. Together.</h1>
+          <p className="text-sm text-indigo-100 mt-1">High-school study progress for students, teachers &amp; parents.</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
           {currentUser ? (
-            <Link
-              to="/dashboard"
-              className="bg-white text-indigo-700 hover:bg-indigo-50 px-4 py-2 rounded-md font-semibold"
-            >
+            <Link to="/dashboard" className="bg-white text-indigo-700 hover:bg-indigo-50 px-4 py-2 rounded-md font-semibold text-sm">
               Open Dashboard
             </Link>
           ) : (
             <>
-              <Link
-                to="/register"
-                className="bg-white text-indigo-700 hover:bg-indigo-50 px-4 py-2 rounded-md font-semibold"
-              >
-                Create Account
-              </Link>
-              <Link
-                to="/login"
-                className="border border-white/60 hover:bg-white/10 px-4 py-2 rounded-md font-semibold"
-              >
+              <Link to="/login" className="bg-white text-indigo-700 hover:bg-indigo-50 px-4 py-2 rounded-md font-semibold text-sm">
                 Sign In
+              </Link>
+              <Link to="/register" className="border border-white/60 hover:bg-white/10 px-4 py-2 rounded-md font-semibold text-sm">
+                Register
               </Link>
             </>
           )}
         </div>
       </section>
 
-      <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <RoleCard
-          title="Admin"
-          description="Manage teachers and students, and post school-wide news."
-        />
-        <RoleCard
-          title="Teachers"
-          description="Take attendance, update marks, share resources, run revision classes, chat with classes."
-        />
-        <RoleCard
-          title="Students"
-          description="See timetable & marks, download resources, get an AI learning path, join class chat."
-        />
-        <RoleCard
-          title="Parents"
-          description="Follow your child's timetable, marks, attendance, news, and join the parent chat."
-        />
-      </section>
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* News feed — 2/3 width */}
+        <section className="lg:col-span-2 space-y-3">
+          <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+            📰 Latest News
+          </h2>
+          {latestNews.length === 0 ? (
+            <p className="text-sm text-slate-400">No news yet.</p>
+          ) : (
+            latestNews.map((item) => (
+              <div key={item.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${CATEGORY_STYLE[item.category] ?? 'bg-slate-100 text-slate-600'}`}>
+                        {item.category}
+                      </span>
+                      <span className="text-xs text-slate-400">{item.date}</span>
+                      <span className="text-xs text-slate-400">· {item.author}</span>
+                    </div>
+                    <h3 className="font-semibold text-slate-900 text-sm leading-snug">{item.title}</h3>
+                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">{item.body}</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </section>
 
-      <section>
-        <h2 className="text-xl font-bold text-slate-900 mb-3">Core Features</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {FEATURES.map((feature) => (
-            <div
-              key={feature.title}
-              className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm"
-            >
-              <h3 className="font-semibold text-slate-900">{feature.title}</h3>
-              <p className="text-sm text-slate-600 mt-1">{feature.description}</p>
+        {/* Sidebar — 1/3 width */}
+        <aside className="space-y-5">
+          {/* Quick links */}
+          <div>
+            <h2 className="text-base font-bold text-slate-800 mb-2">⚡ Quick Links</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {QUICK_LINKS.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className="flex flex-col items-center justify-center gap-1 bg-white border border-slate-200 rounded-xl py-3 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:bg-indigo-50 transition-colors shadow-sm"
+                >
+                  <span className="text-xl">{link.icon}</span>
+                  {link.label}
+                </Link>
+              ))}
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
 
-      <section>
-        <h2 className="text-xl font-bold text-slate-900 mb-3">Sitemap</h2>
-        <div className="grid sm:grid-cols-3 gap-4">
-          {SITEMAP.map((group) => (
-            <div
-              key={group.heading}
-              className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm"
-            >
-              <h3 className="font-semibold text-slate-900">{group.heading}</h3>
-              <ul className="mt-3 space-y-2">
-                {group.links.map((link) => (
-                  <li key={link.to}>
-                    <Link
-                      to={link.to}
-                      className="text-indigo-600 font-semibold hover:underline"
-                    >
-                      {link.label}
-                    </Link>
-                    <p className="text-xs text-slate-500">{link.description}</p>
-                  </li>
+          {/* Helplines */}
+          {helplines.length > 0 && (
+            <div>
+              <h2 className="text-base font-bold text-slate-800 mb-2">📞 Helplines</h2>
+              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                {helplines.map((h, i) => (
+                  <div
+                    key={h.phone}
+                    className={`flex items-center justify-between px-4 py-2.5 text-sm ${i > 0 ? 'border-t border-slate-100' : ''}`}
+                  >
+                    <span className="text-slate-600">{h.label}</span>
+                    <a href={`tel:${h.phone}`} className="font-semibold text-indigo-600 hover:underline">
+                      {h.phone}
+                    </a>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
-          ))}
-        </div>
-      </section>
-    </div>
-  )
-}
+          )}
 
-function RoleCard({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-      <h3 className="font-bold text-lg text-slate-900">{title}</h3>
-      <p className="text-sm text-slate-600 mt-1">{description}</p>
+          {/* Today's date */}
+          <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-center">
+            <p className="text-xs text-indigo-400 font-medium uppercase tracking-wide">Today</p>
+            <p className="text-lg font-bold text-indigo-700 mt-0.5">
+              {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+          </div>
+        </aside>
+      </div>
     </div>
   )
 }
