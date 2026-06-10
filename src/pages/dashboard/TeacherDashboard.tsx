@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Card } from '../../components/Card'
 import { ChatPanel } from '../../components/ChatPanel'
 import { FormField } from '../../components/FormField'
@@ -6,9 +7,36 @@ import { Tabs } from '../../components/Tabs'
 import { useData } from '../../hooks/useData'
 import { useToast } from '../../hooks/useToast'
 import { useAuth } from '../../hooks/useAuth'
-import type { AttendanceStatus, Resource, User } from '../../types'
+import { notificationDetailPath } from '../notificationDetailPath'
+import type { AttendanceStatus, DayOfWeek, Resource, TimetableSlot, User } from '../../types'
 
 const ATTENDANCE_OPTIONS: AttendanceStatus[] = ['present', 'absent', 'late', 'excused']
+
+const DAYS: DayOfWeek[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const DAY_OFFSET: Record<DayOfWeek, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5 }
+
+/** Period number → start–end time label */
+const PERIOD_TIME: Record<number, string> = {
+  1: '07:00–07:45',
+  2: '07:50–08:35',
+  3: '08:40–09:25',
+  4: '09:35–10:20',
+  5: '10:25–11:10',
+  6: '13:00–13:45',
+  7: '13:50–14:35',
+  8: '14:40–15:25',
+  9: '15:30–16:15',
+  10: '16:20–17:05',
+}
+
+function getMonday(date: Date): Date {
+  const d = new Date(date)
+  const day = d.getDay()
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+  d.setDate(diff)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
 
 export function TeacherDashboard() {
   const { currentUser } = useAuth()
@@ -66,7 +94,7 @@ export function TeacherDashboard() {
             id: 'attendance',
             label: 'Attendance',
             content: (
-              <AttendanceForm
+              <AttendanceTab
                 subject={subject}
                 classIds={teacherClassIds}
                 studentsByClass={studentsByClass}
@@ -117,119 +145,291 @@ export function TeacherDashboard() {
   )
 }
 
-interface AttendanceFormProps {
+interface AttendanceTabProps {
   subject: string
   classIds: string[]
   studentsByClass: Map<string, User[]>
 }
 
-function AttendanceForm({ subject, classIds, studentsByClass }: AttendanceFormProps) {
-  const { addAttendance } = useData()
+function AttendanceTab({ subject, classIds, studentsByClass }: AttendanceTabProps) {
+  const { timetable, attendance, addAttendance } = useData()
   const { currentUser } = useAuth()
   const { push } = useToast()
 
-  const [classId, setClassId] = useState(classIds[0] ?? '')
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
-  const [period, setPeriod] = useState('1')
+  const [weekStart, setWeekStart] = useState(() => getMonday(new Date()))
+  const [activeSlot, setActiveSlot] = useState<TimetableSlot | null>(null)
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({})
 
-  const students = studentsByClass.get(classId) ?? []
+  const mySlots = useMemo(
+    () => timetable.filter((s) => s.subject === subject && classIds.includes(s.classId)),
+    [timetable, subject, classIds],
+  )
 
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!classId) {
-      push('error', 'Select a class.')
+  /** All distinct periods that appear in the teacher's timetable, sorted */
+  const periods = useMemo(
+    () => Array.from(new Set(mySlots.map((s) => s.period))).sort((a, b) => a - b),
+    [mySlots],
+  )
+
+  /** Quick lookup: `${day}-${period}` → slot */
+  const slotIndex = useMemo(() => {
+    const map = new Map<string, TimetableSlot>()
+    for (const s of mySlots) map.set(`${s.day}-${s.period}`, s)
+    return map
+  }, [mySlots])
+
+  const dateForDay = (day: DayOfWeek): string => {
+    const d = new Date(weekStart)
+    d.setDate(d.getDate() + DAY_OFFSET[day])
+    return d.toISOString().slice(0, 10)
+  }
+
+  const isAlreadyTaken = (slot: TimetableSlot): boolean => {
+    const date = dateForDay(slot.day)
+    return attendance.some(
+      (r) =>
+        r.classId === slot.classId &&
+        r.subject === subject &&
+        r.date === date &&
+        r.period === slot.period,
+    )
+  }
+
+  const openSlot = (slot: TimetableSlot) => {
+    setActiveSlot(slot)
+    setStatuses({})
+  }
+
+  const saveAttendance = () => {
+    if (!activeSlot) return
+    const date = dateForDay(activeSlot.day)
+    const students = studentsByClass.get(activeSlot.classId) ?? []
+    if (students.length === 0) {
+      push('error', 'No students found in this class.')
       return
     }
     students.forEach((student) => {
       addAttendance({
         studentEmail: student.email,
-        classId,
+        classId: activeSlot.classId,
         subject,
         date,
-        period: Number(period),
+        period: activeSlot.period,
         status: statuses[student.email] ?? 'present',
         teacher: currentUser?.fullName ?? 'Teacher',
       })
     })
     setStatuses({})
+    setActiveSlot(null)
     push('success', `Attendance saved for ${students.length} student(s).`)
   }
 
+  // Generate dropdown options: 4 weeks back → 4 weeks forward (9 total)
+  const weekOptions = useMemo(() => {
+    const today = getMonday(new Date())
+    const fmtOpt = (d: Date) =>
+      d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    return Array.from({ length: 9 }, (_, i) => {
+      const mon = new Date(today)
+      mon.setDate(mon.getDate() + (i - 4) * 7)
+      const sat = new Date(mon)
+      sat.setDate(sat.getDate() + 5)
+      return { value: mon.toISOString().slice(0, 10), label: `${fmtOpt(mon)} – ${fmtOpt(sat)}` }
+    })
+  }, [])
+
   return (
-    <Card title="Take Attendance" description={`Subject: ${subject}`}>
-      <form onSubmit={submit} className="space-y-4">
-        <div className="grid sm:grid-cols-3 gap-4">
-          <FormField
-            as="select"
-            label="Class"
-            name="attClass"
-            value={classId}
-            onChange={(e) => setClassId(e.target.value)}
-          >
-            {classIds.map((id) => (
-              <option key={id} value={id}>
-                {id}
-              </option>
-            ))}
-          </FormField>
-          <FormField
-            label="Date"
-            name="attDate"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-          <FormField
-            label="Period"
-            name="attPeriod"
-            type="number"
-            min={1}
-            max={10}
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-          />
-        </div>
-
-        {students.length === 0 ? (
-          <p className="text-sm text-slate-500">No students in this class.</p>
-        ) : (
-          <ul className="space-y-2">
-            {students.map((student) => (
-              <li
-                key={student.email}
-                className="flex items-center justify-between gap-3 border border-slate-200 rounded-lg px-3 py-2"
-              >
-                <span className="font-medium text-slate-800">{student.fullName}</span>
-                <select
-                  value={statuses[student.email] ?? 'present'}
-                  onChange={(e) =>
-                    setStatuses((prev) => ({
-                      ...prev,
-                      [student.email]: e.target.value as AttendanceStatus,
-                    }))
-                  }
-                  className="rounded-md border border-slate-300 px-2 py-1 text-sm capitalize"
-                >
-                  {ATTENDANCE_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </li>
-            ))}
-          </ul>
-        )}
-
+    <div className="space-y-4">
+      {/* Week selector */}
+      <div className="flex items-center gap-2">
         <button
-          type="submit"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
+          onClick={() => {
+            setActiveSlot(null)
+            setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n })
+          }}
+          className="text-sm font-medium text-indigo-600 hover:text-indigo-800 px-2 py-1.5 rounded hover:bg-indigo-50 border border-slate-200"
         >
-          Save Attendance
+          ←
         </button>
-      </form>
-    </Card>
+        <select
+          value={weekStart.toISOString().slice(0, 10)}
+          onChange={(e) => {
+            setActiveSlot(null)
+            setWeekStart(new Date(e.target.value + 'T00:00:00'))
+          }}
+          className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 bg-white"
+        >
+          {weekOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={() => {
+            setActiveSlot(null)
+            setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n })
+          }}
+          className="text-sm font-medium text-indigo-600 hover:text-indigo-800 px-2 py-1.5 rounded hover:bg-indigo-50 border border-slate-200"
+        >
+          →
+        </button>
+      </div>
+
+      {/* Weekly timetable grid */}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr>
+              <th className="w-20 text-left px-2 py-1.5 text-slate-500 font-medium border-b border-slate-200">
+                Period
+              </th>
+              {DAYS.map((day) => {
+                const dateStr = dateForDay(day)
+                const [, mm, dd] = dateStr.split('-')
+                return (
+                  <th
+                    key={day}
+                    className="text-center px-2 py-1.5 font-bold text-slate-600 uppercase border-b border-slate-200"
+                  >
+                    <div>{day}</div>
+                    <div className="font-normal text-slate-400">{dd}/{mm}</div>
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {periods.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="text-center text-slate-400 py-6">
+                  No timetable slots found for your subject.
+                </td>
+              </tr>
+            ) : (
+              periods.map((period) => (
+                <tr key={period} className="border-b border-slate-100 last:border-0">
+                  <td className="px-2 py-2 text-slate-500 whitespace-nowrap align-middle">
+                    <div className="font-semibold text-slate-700">P{period}</div>
+                    <div className="text-slate-400">{PERIOD_TIME[period] ?? ''}</div>
+                  </td>
+                  {DAYS.map((day) => {
+                    const slot = slotIndex.get(`${day}-${period}`)
+                    if (!slot) {
+                      return <td key={day} className="px-1 py-2" />
+                    }
+                    const taken = isAlreadyTaken(slot)
+                    const active = activeSlot?.id === slot.id
+                    return (
+                      <td key={day} className="px-1 py-2 align-top">
+                        <button
+                          onClick={() => openSlot(slot)}
+                          className={`w-full text-left rounded-lg px-2 py-1.5 border transition-colors ${
+                            active
+                              ? 'border-indigo-500 bg-indigo-100 ring-1 ring-indigo-400'
+                              : taken
+                                ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                                : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
+                          }`}
+                        >
+                          <div className="font-semibold leading-tight">{slot.classId}</div>
+                          <div className="text-slate-400">{slot.room}</div>
+                          {taken && (
+                            <div className="text-emerald-600 font-medium text-[10px] mt-0.5">✓ Done</div>
+                          )}
+                        </button>
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Attendance modal */}
+      {activeSlot && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setActiveSlot(null)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-200">
+              <div>
+                <h2 className="font-semibold text-slate-800">
+                  Take Attendance — {activeSlot.classId}
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {activeSlot.subject} · Period {activeSlot.period} ({PERIOD_TIME[activeSlot.period] ?? ''}) · {dateForDay(activeSlot.day)} · {activeSlot.room}
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveSlot(null)}
+                className="text-slate-400 hover:text-slate-600 text-lg leading-none mt-0.5"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="overflow-y-auto flex-1 px-5 py-4">
+              {(studentsByClass.get(activeSlot.classId) ?? []).length === 0 ? (
+                <p className="text-sm text-slate-500">No students in this class.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {(studentsByClass.get(activeSlot.classId) ?? []).map((student) => (
+                    <li
+                      key={student.email}
+                      className="flex items-center justify-between gap-3 border border-slate-200 rounded-lg px-3 py-2"
+                    >
+                      <span className="font-medium text-slate-800 text-sm">{student.fullName}</span>
+                      <select
+                        value={statuses[student.email] ?? 'present'}
+                        onChange={(e) =>
+                          setStatuses((prev) => ({
+                            ...prev,
+                            [student.email]: e.target.value as AttendanceStatus,
+                          }))
+                        }
+                        className="rounded-md border border-slate-300 px-2 py-1 text-sm capitalize"
+                      >
+                        {ATTENDANCE_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Modal footer */}
+            <div className="flex gap-2 px-5 py-4 border-t border-slate-200">
+              <button
+                onClick={saveAttendance}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2 text-sm"
+              >
+                Save Attendance
+              </button>
+              <button
+                onClick={() => setActiveSlot(null)}
+                className="border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium rounded-md px-4 py-2 text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -735,7 +935,12 @@ function NotifyClassForm({ classIds }: { classIds: string[] }) {
             {myNotifications.map((n) => (
               <li key={n.id} className="border border-slate-200 rounded-lg px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold text-slate-900">{n.title}</p>
+                  <Link
+                    to={notificationDetailPath(n.id)}
+                    className="font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
+                  >
+                    {n.title}
+                  </Link>
                   <span className="text-xs rounded-full bg-slate-100 text-slate-600 px-2 py-0.5">
                     {n.target}
                   </span>

@@ -62,6 +62,11 @@ interface DataContextValue {
   addEvaluation: (evaluation: Omit<TestEvaluation, 'id'>) => void
   addNews: (item: Omit<NewsItem, 'id'>) => void
   addNotification: (item: Omit<NotificationItem, 'id'>) => void
+  updateNotification: (id: number, patch: Partial<Omit<NotificationItem, 'id'>>) => void
+  deleteNotification: (id: number) => void
+  addChatGroup: (group: ChatGroup) => void
+  updateChatGroup: (id: string, patch: Partial<Omit<ChatGroup, 'id'>>) => void
+  deleteChatGroup: (id: string) => void
   addChatMessage: (message: Omit<ChatMessage, 'id'>) => void
   addRegistrationRequest: (request: Omit<RegistrationRequest, 'id' | 'status' | 'submittedAt'>) => void
   approveRegistration: (id: number) => void
@@ -97,6 +102,7 @@ const KEYS = {
   evaluations: 'estudiez.evaluations',
   news: 'estudiez.news',
   notifications: 'estudiez.notifications',
+  chatGroups: 'estudiez.chatGroups',
   chatMessages: 'estudiez.chatMessages',
   registrations: 'estudiez.registrations',
 } as const
@@ -141,6 +147,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     async function bootstrap() {
       try {
+        const cachedChatGroups = window.localStorage.getItem(KEYS.chatGroups)
         const cachedChatMessages = window.localStorage.getItem(KEYS.chatMessages)
 
         const [
@@ -211,7 +218,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setEvaluations(baseEvaluations)
         setNews(baseNews)
         setNotifications(baseNotifications)
-        setChatGroups(chatFile.groups)
+        setChatGroups(
+          cachedChatGroups
+            ? (JSON.parse(cachedChatGroups) as ChatGroup[])
+            : chatFile.groups,
+        )
         setChatMessages(
           cachedChatMessages
             ? (JSON.parse(cachedChatMessages) as ChatMessage[])
@@ -273,6 +284,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!loading) window.localStorage.setItem(KEYS.notifications, JSON.stringify(notifications))
   }, [notifications, loading])
+  useEffect(() => {
+    if (!loading) window.localStorage.setItem(KEYS.chatGroups, JSON.stringify(chatGroups))
+  }, [chatGroups, loading])
   useEffect(() => {
     if (!loading) window.localStorage.setItem(KEYS.chatMessages, JSON.stringify(chatMessages))
   }, [chatMessages, loading])
@@ -378,6 +392,28 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setNotifications((prev) => [{ ...item, id: nextId(prev) }, ...prev]),
     [],
   )
+  const updateNotification = useCallback(
+    (id: number, patch: Partial<Omit<NotificationItem, 'id'>>) =>
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, ...patch } : n))),
+    [],
+  )
+  const deleteNotification = useCallback(
+    (id: number) => setNotifications((prev) => prev.filter((n) => n.id !== id)),
+    [],
+  )
+  const addChatGroup = useCallback(
+    (group: ChatGroup) => setChatGroups((prev) => [...prev, group]),
+    [],
+  )
+  const updateChatGroup = useCallback(
+    (id: string, patch: Partial<Omit<ChatGroup, 'id'>>) =>
+      setChatGroups((prev) => prev.map((g) => (g.id === id ? { ...g, ...patch } : g))),
+    [],
+  )
+  const deleteChatGroup = useCallback((id: string) => {
+    setChatGroups((prev) => prev.filter((g) => g.id !== id))
+    setChatMessages((prev) => prev.filter((m) => m.groupId !== id))
+  }, [])
   const addChatMessage = useCallback(
     (message: Omit<ChatMessage, 'id'>) =>
       setChatMessages((prev) => [...prev, { ...message, id: nextId(prev) }]),
@@ -466,6 +502,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addEvaluation,
       addNews,
       addNotification,
+      updateNotification,
+      deleteNotification,
+      addChatGroup,
+      updateChatGroup,
+      deleteChatGroup,
       addChatMessage,
       registrations,
       addRegistrationRequest,
@@ -512,6 +553,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addEvaluation,
       addNews,
       addNotification,
+      updateNotification,
+      deleteNotification,
+      addChatGroup,
+      updateChatGroup,
+      deleteChatGroup,
       addChatMessage,
       registrations,
       addRegistrationRequest,

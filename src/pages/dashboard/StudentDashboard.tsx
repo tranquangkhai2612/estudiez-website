@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { Card } from '../../components/Card'
 import { ChatPanel } from '../../components/ChatPanel'
 import { Tabs } from '../../components/Tabs'
@@ -6,6 +7,7 @@ import { TimetableGrid } from '../../components/TimetableGrid'
 import { useAuth } from '../../hooks/useAuth'
 import { useData } from '../../hooks/useData'
 import { useToast } from '../../hooks/useToast'
+import { notificationDetailPath } from '../notificationDetailPath'
 import type { AttendanceStatus } from '../../types'
 
 const STATUS_STYLES: Record<AttendanceStatus, string> = {
@@ -266,7 +268,12 @@ export function StudentDashboard() {
                 <ul className="space-y-2">
                   {myNotifications.map((n) => (
                     <li key={n.id} className="border border-slate-200 rounded-lg px-3 py-2">
-                      <p className="font-semibold text-slate-900">{n.title}</p>
+                      <Link
+                        to={notificationDetailPath(n.id)}
+                        className="font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
+                      >
+                        {n.title}
+                      </Link>
                       <p className="text-sm text-slate-600">{n.body}</p>
                       <p className="text-xs text-slate-400 mt-1">
                         {n.date} · {n.sender}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Card } from '../../components/Card'
 import { FormField } from '../../components/FormField'
 import { Tabs } from '../../components/Tabs'
@@ -7,8 +7,10 @@ import { useAuth } from '../../hooks/useAuth'
 import { useData } from '../../hooks/useData'
 import { useToast } from '../../hooks/useToast'
 import { userDetailPath } from '../userDetailPath'
+import { chatGroupDetailPath } from '../chatGroupDetailPath'
 import { classDetailPath } from '../classDetailPath'
-import type { Grade } from '../../types'
+import { notificationDetailPath } from '../notificationDetailPath'
+import type { ChatGroupType, Grade } from '../../types'
 
 export function AdminDashboard() {
   const { users, classes, registrations } = useData()
@@ -46,6 +48,7 @@ export function AdminDashboard() {
             { id: 'classes', label: 'Classes', content: <ManageClasses /> },
             { id: 'news', label: 'News', content: <ManageNews /> },
             { id: 'notify', label: 'Notify Teachers', content: <NotifyTeachers /> },
+            { id: 'chat', label: 'Chat Groups', content: <ManageChatGroups /> },
           ]}
         />
       </Card>
@@ -865,7 +868,12 @@ function NotifyTeachers() {
           ) : (
             teacherNotifications.map((n) => (
               <li key={n.id} className="border border-slate-200 rounded-lg px-3 py-2">
-                <p className="font-semibold text-slate-900">{n.title}</p>
+                <Link
+                  to={notificationDetailPath(n.id)}
+                  className="font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
+                >
+                  {n.title}
+                </Link>
                 <p className="text-sm text-slate-600">{n.body}</p>
                 <p className="text-xs text-slate-400 mt-1">
                   {n.date} · {n.sender}
@@ -878,3 +886,137 @@ function NotifyTeachers() {
     </div>
   )
 }
+
+interface ChatGroupFormState {
+  classId: string
+  type: ChatGroupType
+}
+
+const GROUP_TYPE_LABELS: Record<ChatGroupType, string> = {
+  'student-teacher': 'Students & Teachers',
+  'parent-teacher': 'Parents & Teachers',
+}
+
+const GROUP_TYPE_SUFFIX: Record<ChatGroupType, string> = {
+  'student-teacher': 'st',
+  'parent-teacher': 'pt',
+}
+
+function ManageChatGroups() {
+  const { classes, chatGroups, addChatGroup } = useData()
+  const { push } = useToast()
+
+  const [form, setForm] = useState<ChatGroupFormState>({
+    classId: classes[0]?.id ?? '',
+    type: 'student-teacher',
+  })
+  const [createError, setCreateError] = useState('')
+
+  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!form.classId) {
+      setCreateError('Select a class.')
+      return
+    }
+    const schoolClass = classes.find((c) => c.id === form.classId)
+    if (!schoolClass) {
+      setCreateError('Invalid class.')
+      return
+    }
+    const id = `${form.classId}-${schoolClass.year}-${GROUP_TYPE_SUFFIX[form.type]}`
+    if (chatGroups.some((g) => g.id === id)) {
+      setCreateError('This group already exists for the selected class and type.')
+      return
+    }
+    setCreateError('')
+    addChatGroup({
+      id,
+      name: `${schoolClass.name} ${GROUP_TYPE_LABELS[form.type]}`,
+      classId: form.classId,
+      year: schoolClass.year,
+      type: form.type,
+    })
+    push('success', `Chat group created for ${schoolClass.name}.`)
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card
+        title="Create Chat Group"
+        description="Create a group chat channel for a class between students & teachers or parents & teachers."
+      >
+        <form onSubmit={submit} noValidate className="space-y-3">
+          <FormField
+            as="select"
+            label="Class"
+            name="chatGroupClass"
+            value={form.classId}
+            onChange={(e) => setForm((p) => ({ ...p, classId: e.target.value }))}
+            error={createError && !form.classId ? createError : undefined}
+          >
+            <option value="">Select a class</option>
+            {classes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} (Grade {c.grade}, {c.year})
+              </option>
+            ))}
+          </FormField>
+          <FormField
+            as="select"
+            label="Group Type"
+            name="chatGroupType"
+            value={form.type}
+            onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as ChatGroupType }))}
+            error={createError && form.classId ? createError : undefined}
+          >
+            <option value="student-teacher">Students &amp; Teachers</option>
+            <option value="parent-teacher">Parents &amp; Teachers</option>
+          </FormField>
+          <button
+            type="submit"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
+          >
+            Create Group
+          </button>
+        </form>
+      </Card>
+
+      <Card title={`Chat Groups (${chatGroups.length})`}>
+        {chatGroups.length === 0 ? (
+          <p className="text-sm text-slate-500">No chat groups yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {chatGroups.map((g) => (
+              <li
+                key={g.id}
+                className="flex flex-wrap items-center justify-between gap-2 border border-slate-200 rounded-lg px-3 py-2"
+              >
+                <div>
+                  <Link
+                    to={chatGroupDetailPath(g.id)}
+                    className="font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
+                  >
+                    {g.name}
+                  </Link>
+                  <p className="text-xs text-slate-500">
+                    {g.classId} · {g.year}
+                  </p>
+                </div>
+                <span
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    g.type === 'student-teacher'
+                      ? 'bg-indigo-100 text-indigo-700'
+                      : 'bg-amber-100 text-amber-700'
+                  }`}
+                >
+                  {GROUP_TYPE_LABELS[g.type]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    </div>
+  )
+}
+

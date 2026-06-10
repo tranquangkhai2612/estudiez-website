@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useData } from '../hooks/useData'
+import { notificationDetailPath } from '../pages/notificationDetailPath'
 import type { NotificationItem } from '../types'
 
 const readKey = (email: string) => `estudiez.readNotifications.${email}`
@@ -18,6 +20,7 @@ function loadReadIds(email: string): number[] {
 export function NotificationBell() {
   const { currentUser } = useAuth()
   const { notifications, timetable, users } = useData()
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [readIds, setReadIds] = useState<number[]>(() => loadReadIds(currentUser?.email ?? ''))
   const containerRef = useRef<HTMLDivElement>(null)
@@ -139,12 +142,21 @@ export function NotificationBell() {
             ) : (
               <ul className="divide-y divide-slate-100">
                 {myNotifications.map((n) => (
-                  <li key={n.id} className="px-4 py-3 hover:bg-slate-50">
-                    <p className="text-sm font-semibold text-slate-900">{n.title}</p>
-                    <p className="text-sm text-slate-600 mt-0.5">{n.body}</p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      {n.sender} &middot; {n.date}
-                    </p>
+                  <li key={n.id} className="hover:bg-slate-50">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(false)
+                        navigate(notificationDetailPath(n.id))
+                      }}
+                      className="w-full px-4 py-3 text-left"
+                    >
+                      <p className="text-sm font-semibold text-slate-900">{n.title}</p>
+                      <p className="text-sm text-slate-600 mt-0.5">{n.body}</p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        {n.sender} &middot; {n.date}
+                      </p>
+                    </button>
                   </li>
                 ))}
               </ul>

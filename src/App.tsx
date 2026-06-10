@@ -8,6 +8,8 @@ import { DashboardPage } from './pages/DashboardPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { UserDetailPage } from './pages/UserDetailPage'
 import { ClassDetailPage } from './pages/ClassDetailPage'
+import { NotificationDetailPage } from './pages/NotificationDetailPage'
+import { ChatGroupDetailPage } from './pages/ChatGroupDetailPage'
 import { FeedbackPage } from './pages/FeedbackPage'
 import { ContactPage } from './pages/ContactPage'
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -48,6 +50,22 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <ClassDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="notifications/:id"
+          element={
+            <ProtectedRoute>
+              <NotificationDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="chat/:groupId"
+          element={
+            <ProtectedRoute>
+              <ChatGroupDetailPage />
             </ProtectedRoute>
           }
         />
