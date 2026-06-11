@@ -107,6 +107,7 @@ export interface TimetableSlot {
 
 export interface Resource {
   id: number
+  semesterId?: string
   title: string
   type: 'video' | 'document' | 'external-link'
   url: string
@@ -123,6 +124,7 @@ export interface RevisionClass {
   classId?: string
   dateTime: string
   teacher: string
+  room?: string
 }
 
 /** Teacher's detailed test evaluation with an AI-suggested learning path. */

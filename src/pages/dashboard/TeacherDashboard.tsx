@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Card } from '../../components/Card'
 import { ChatPanel } from '../../components/ChatPanel'
@@ -125,9 +125,17 @@ function localDateStr(date: Date): string {
 
 export function TeacherDashboard() {
   const { currentUser } = useAuth()
-  const { timetable, users, chatGroups } = useData()
+  const { timetable, users } = useData()
 
-  const subject = currentUser?.subject ?? ''
+  // Always resolve subject from the live users array so a stale currentUser
+  // snapshot (missing the subject field) never silently breaks the dashboard.
+  const subject = useMemo(
+    () =>
+      users.find((u) => u.email === currentUser?.email)?.subject ??
+      currentUser?.subject ??
+      '',
+    [users, currentUser],
+  )
 
   // Classes this teacher teaches, derived from the timetable for their subject.
   const teacherClassIds = useMemo(() => {
@@ -151,14 +159,6 @@ export function TeacherDashboard() {
   const myStudents = useMemo(
     () => users.filter((u) => u.role === 'student' && teacherClassIds.includes(u.classId ?? '')),
     [users, teacherClassIds],
-  )
-
-  const studentChatGroup = useMemo(
-    () =>
-      chatGroups.find(
-        (g) => teacherClassIds.includes(g.classId) && g.type === 'student-teacher',
-      ),
-    [chatGroups, teacherClassIds],
   )
 
   const meta = SUBJECT_META[subject] ?? DEFAULT_META
@@ -228,18 +228,76 @@ export function TeacherDashboard() {
           {
             id: 'chat',
             label: 'Class Chat',
-            content: (
-              <Card title="Class Chat Group">
-                {studentChatGroup ? (
-                  <ChatPanel groupId={studentChatGroup.id} />
-                ) : (
-                  <p className="text-sm text-slate-500">No chat group for your classes yet.</p>
-                )}
-              </Card>
-            ),
+            content: <ChatTab classIds={teacherClassIds} />,
           },
         ]}
       />
+    </div>
+  )
+}
+
+function ChatTab({ classIds }: { classIds: string[] }) {
+  const { chatGroups } = useData()
+
+  const myGroups = useMemo(
+    () => chatGroups.filter((g) => classIds.includes(g.classId)),
+    [chatGroups, classIds],
+  )
+
+  const [selectedId, setSelectedId] = useState<string>(() => myGroups[0]?.id ?? '')
+
+  const TYPE_META: Record<string, { label: string; icon: string; color: string }> = {
+    'student-teacher': { label: 'Students', icon: '👨‍🎓', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+    'parent-teacher':  { label: 'Parents',  icon: '👨‍👩‍👦', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  }
+
+  if (myGroups.length === 0) {
+    return <p className="text-sm text-slate-500">No chat groups for your classes yet.</p>
+  }
+
+  return (
+    <div className="flex border border-slate-200 rounded-xl overflow-hidden min-h-[480px]">
+      {/* Group list */}
+      <div className="w-48 shrink-0 border-r border-slate-200 bg-slate-50 flex flex-col">
+        <p className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide border-b border-slate-200">
+          Groups
+        </p>
+        <ul className="flex-1 overflow-y-auto">
+          {myGroups.map((g) => {
+            const meta = TYPE_META[g.type] ?? { label: g.type, icon: '💬', color: 'bg-slate-50 text-slate-700 border-slate-200' }
+            const active = g.id === selectedId
+            return (
+              <li key={g.id}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedId(g.id)}
+                  className={[
+                    'w-full text-left px-3 py-3 border-b border-slate-100 transition-colors',
+                    active ? 'bg-indigo-600 text-white' : 'hover:bg-slate-100 text-slate-700',
+                  ].join(' ')}
+                >
+                  <p className={`text-xs font-semibold ${active ? 'text-white' : 'text-slate-800'}`}>
+                    {g.classId}
+                  </p>
+                  <span className={`mt-1 inline-flex items-center gap-1 text-xs rounded-full px-2 py-0.5 border ${
+                    active ? 'bg-white/20 text-white border-white/30' : meta.color
+                  }`}>
+                    {meta.icon} {meta.label}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+
+      {/* Chat panel */}
+      <div className="flex-1 min-w-0">
+        {selectedId
+          ? <ChatPanel groupId={selectedId} />
+          : <p className="text-sm text-slate-400 p-6">Select a group to start chatting.</p>
+        }
+      </div>
     </div>
   )
 }
@@ -946,29 +1004,58 @@ function MarksEvalTab({
 }
 
 interface ResourceFormState {
-  title: string
-  type: Resource['type']
-  url: string
+  semesterId: string
   classId: string
+  title: string
+  url: string
   system: Resource['system']
 }
 
-function ResourceForm({ subject, classIds }: { subject: string; classIds: string[] }) {
-  const { addResource } = useData()
+function detectResourceType(url: string): Resource['type'] {
+  const lower = url.toLowerCase()
+  if (
+    lower.includes('youtube.com') ||
+    lower.includes('youtu.be') ||
+    lower.includes('vimeo.com') ||
+    /\.(mp4|mov|avi|mkv|webm)$/.test(lower)
+  )
+    return 'video'
+  if (/\.(pdf|doc|docx|ppt|pptx|xls|xlsx|txt)$/.test(lower)) return 'document'
+  return 'external-link'
+}
+
+function ResourceForm({ subject: teacherSubject, classIds }: { subject: string; classIds: string[] }) {
+  const { addResource, semesters } = useData()
   const { currentUser } = useAuth()
   const { push } = useToast()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState<ResourceFormState>({
-    title: '',
-    type: 'external-link',
-    url: '',
+    semesterId: '',
     classId: classIds[0] ?? '',
+    title: '',
+    url: '',
     system: 'regular',
   })
   const [errors, setErrors] = useState<Partial<Record<keyof ResourceFormState, string>>>({})
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const objectUrl = URL.createObjectURL(file)
+    const nameWithoutExt = file.name.replace(/\.[^.]+$/, '')
+    setForm((p) => ({
+      ...p,
+      url: objectUrl,
+      title: p.title.trim() === '' ? nameWithoutExt : p.title,
+    }))
+    setErrors((p) => ({ ...p, url: undefined }))
+  }
+
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const next: Partial<Record<keyof ResourceFormState, string>> = {}
+    if (!form.semesterId) next.semesterId = 'Select a semester.'
+    if (!form.classId) next.classId = 'Select a class.'
     if (!form.title.trim()) next.title = 'Title is required.'
     if (!form.url.trim()) next.url = 'URL is required.'
     else {
@@ -982,10 +1069,11 @@ function ResourceForm({ subject, classIds }: { subject: string; classIds: string
     if (Object.keys(next).length > 0) return
 
     addResource({
+      semesterId: form.semesterId,
       title: form.title.trim(),
-      type: form.type,
+      type: detectResourceType(form.url.trim()),
       url: form.url.trim(),
-      subject,
+      subject: teacherSubject,
       classId: form.classId || undefined,
       system: form.system,
       addedBy: currentUser?.fullName ?? 'Teacher',
@@ -995,8 +1083,40 @@ function ResourceForm({ subject, classIds }: { subject: string; classIds: string
   }
 
   return (
-    <Card title="Upload Study Resource" description={`Subject: ${subject}`}>
+    <Card title="Upload Study Material" description={`Subject: ${teacherSubject}`}>
       <form onSubmit={submit} noValidate className="space-y-4">
+        <div className="grid sm:grid-cols-2 gap-4">
+          <FormField
+            as="select"
+            label="Semester"
+            name="resSemester"
+            value={form.semesterId}
+            onChange={(e) => setForm((p) => ({ ...p, semesterId: e.target.value }))}
+            error={errors.semesterId}
+          >
+            <option value="">— Select semester —</option>
+            {semesters.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} ({s.year})
+              </option>
+            ))}
+          </FormField>
+          <FormField
+            as="select"
+            label="Class"
+            name="resClass"
+            value={form.classId}
+            onChange={(e) => setForm((p) => ({ ...p, classId: e.target.value }))}
+            error={errors.classId}
+          >
+            <option value="">— Select class —</option>
+            {classIds.map((id) => (
+              <option key={id} value={id}>
+                {id}
+              </option>
+            ))}
+          </FormField>
+        </div>
         <FormField
           label="Title"
           name="resTitle"
@@ -1004,54 +1124,47 @@ function ResourceForm({ subject, classIds }: { subject: string; classIds: string
           onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
           error={errors.title}
         />
-        <div className="grid sm:grid-cols-2 gap-4">
-          <FormField
-            as="select"
-            label="Type"
-            name="resType"
-            value={form.type}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, type: e.target.value as Resource['type'] }))
-            }
-          >
-            <option value="video">Video</option>
-            <option value="document">Document / PDF</option>
-            <option value="external-link">External Link</option>
-          </FormField>
-          <FormField
-            as="select"
-            label="Training System"
-            name="resSystem"
-            value={form.system}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, system: e.target.value as Resource['system'] }))
-            }
-          >
-            <option value="regular">Regular</option>
-            <option value="revision">Revision</option>
-          </FormField>
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-slate-700">URL or Local File</label>
+          <div className="flex gap-2">
+            <input
+              id="resUrl"
+              name="resUrl"
+              type="url"
+              value={form.url}
+              onChange={(e) => setForm((p) => ({ ...p, url: e.target.value }))}
+              placeholder="https://..."
+              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="shrink-0 rounded-md border border-slate-300 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700"
+            >
+              📂 Browse
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+          </div>
+          {errors.url && <p className="text-xs text-rose-600">{errors.url}</p>}
+          <p className="text-xs text-slate-400">Type is detected automatically from URL or file extension.</p>
         </div>
         <FormField
           as="select"
-          label="Class"
-          name="resClass"
-          value={form.classId}
-          onChange={(e) => setForm((p) => ({ ...p, classId: e.target.value }))}
+          label="Training System"
+          name="resSystem"
+          value={form.system}
+          onChange={(e) =>
+            setForm((p) => ({ ...p, system: e.target.value as Resource['system'] }))
+          }
         >
-          {classIds.map((id) => (
-            <option key={id} value={id}>
-              {id}
-            </option>
-          ))}
+          <option value="regular">Regular</option>
+          <option value="revision">Revision</option>
         </FormField>
-        <FormField
-          label="URL"
-          name="resUrl"
-          type="url"
-          value={form.url}
-          onChange={(e) => setForm((p) => ({ ...p, url: e.target.value }))}
-          error={errors.url}
-        />
         <button
           type="submit"
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
@@ -1063,80 +1176,227 @@ function ResourceForm({ subject, classIds }: { subject: string; classIds: string
   )
 }
 
-interface RevisionFormState {
-  topic: string
-  dateTime: string
-  classId: string
+const DOW_MAP: Record<number, DayOfWeek | null> = {
+  0: null, 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat',
 }
 
 function RevisionForm({ subject, classIds }: { subject: string; classIds: string[] }) {
-  const { addRevisionClass } = useData()
+  const { timetable, revisionClasses, addRevisionClass } = useData()
   const { currentUser } = useAuth()
   const { push } = useToast()
-  const [form, setForm] = useState<RevisionFormState>({
-    topic: '',
-    dateTime: '',
-    classId: classIds[0] ?? '',
-  })
-  const [errors, setErrors] = useState<Partial<Record<keyof RevisionFormState, string>>>({})
 
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const next: Partial<Record<keyof RevisionFormState, string>> = {}
-    if (!form.topic.trim()) next.topic = 'Topic is required.'
-    if (!form.dateTime) next.dateTime = 'Date and time are required.'
+  const [selectedDate, setSelectedDate] = useState(localDateStr(new Date()))
+  const [selectedPeriod, setSelectedPeriod] = useState<number | null>(null)
+  const [selectedRoom, setSelectedRoom] = useState('')
+  const [topic, setTopic] = useState('')
+  const [classId, setClassId] = useState(classIds[0] ?? '')
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const dayOfWeek = useMemo(
+    () => DOW_MAP[new Date(selectedDate + 'T00:00:00').getDay()],
+    [selectedDate],
+  )
+
+  /** All distinct rooms known from the timetable */
+  const allRooms = useMemo(
+    () => Array.from(new Set(timetable.map((s) => s.room))).sort(),
+    [timetable],
+  )
+
+  /** Rooms occupied by the regular timetable for the current day+period */
+  const occupiedByTimetable = useMemo(() => {
+    if (!dayOfWeek || selectedPeriod === null) return new Set<string>()
+    return new Set(
+      timetable
+        .filter((s) => s.day === dayOfWeek && s.period === selectedPeriod)
+        .map((s) => s.room),
+    )
+  }, [timetable, dayOfWeek, selectedPeriod])
+
+  /** Rooms occupied by already-scheduled revision classes on the same date+period */
+  const occupiedByRevision = useMemo(() => {
+    if (selectedPeriod === null) return new Set<string>()
+    const startTime = PERIOD_TIME[selectedPeriod]?.split('–')[0] ?? ''
+    const prefix = `${selectedDate}T${startTime}`
+    return new Set(
+      revisionClasses
+        .filter((r) => r.dateTime === prefix && r.room)
+        .map((r) => r.room as string),
+    )
+  }, [revisionClasses, selectedDate, selectedPeriod])
+
+  const availableRooms = useMemo(
+    () => allRooms.filter((r) => !occupiedByTimetable.has(r) && !occupiedByRevision.has(r)),
+    [allRooms, occupiedByTimetable, occupiedByRevision],
+  )
+
+  /** Periods that already have a revision class booked on this date */
+  const bookedPeriods = useMemo(() => {
+    return new Set(
+      revisionClasses
+        .filter((r) => r.dateTime.startsWith(selectedDate) && r.teacher === (currentUser?.fullName ?? ''))
+        .map((r) => {
+          const t = r.dateTime.slice(11, 16)
+          return Number(
+            Object.entries(PERIOD_TIME).find(([, v]) => v.startsWith(t))?.[0] ?? -1,
+          )
+        }),
+    )
+  }, [revisionClasses, selectedDate, currentUser])
+
+  const handlePeriodClick = (period: number) => {
+    setSelectedPeriod(period)
+    setSelectedRoom('')
+    setErrors({})
+  }
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const next: Record<string, string> = {}
+    if (selectedPeriod === null) next.period = 'Select a time slot first.'
+    if (!selectedRoom) next.room = 'Select an available room.'
+    if (!topic.trim()) next.topic = 'Topic is required.'
     setErrors(next)
     if (Object.keys(next).length > 0) return
 
+    const startTime = PERIOD_TIME[selectedPeriod!].split('–')[0]
     addRevisionClass({
-      topic: form.topic.trim(),
+      topic: topic.trim(),
       subject,
-      classId: form.classId || undefined,
-      dateTime: form.dateTime,
+      classId: classId || undefined,
+      dateTime: `${selectedDate}T${startTime}`,
       teacher: currentUser?.fullName ?? 'Teacher',
+      room: selectedRoom,
     })
-    setForm((p) => ({ ...p, topic: '', dateTime: '' }))
+    setTopic('')
+    setSelectedRoom('')
+    setSelectedPeriod(null)
     push('success', 'Revision class scheduled.')
   }
 
   return (
     <Card title="Schedule Revision Class" description={`Subject: ${subject}`}>
-      <form onSubmit={submit} noValidate className="space-y-4">
-        <FormField
-          label="Topic"
-          name="revTopic"
-          value={form.topic}
-          onChange={(e) => setForm((p) => ({ ...p, topic: e.target.value }))}
-          error={errors.topic}
+      {/* Date picker */}
+      <div className="mb-5">
+        <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={(e) => { setSelectedDate(e.target.value); setSelectedPeriod(null); setSelectedRoom('') }}
+          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 bg-white"
         />
-        <FormField
-          as="select"
-          label="Class"
-          name="revClass"
-          value={form.classId}
-          onChange={(e) => setForm((p) => ({ ...p, classId: e.target.value }))}
-        >
-          {classIds.map((id) => (
-            <option key={id} value={id}>
-              {id}
-            </option>
-          ))}
-        </FormField>
-        <FormField
-          label="Date & Time"
-          name="revDateTime"
-          type="datetime-local"
-          value={form.dateTime}
-          onChange={(e) => setForm((p) => ({ ...p, dateTime: e.target.value }))}
-          error={errors.dateTime}
-        />
-        <button
-          type="submit"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
-        >
-          Add Revision Slot
-        </button>
-      </form>
+        {!dayOfWeek && (
+          <p className="mt-1 text-xs text-amber-600">Sunday — no regular classes, all rooms available.</p>
+        )}
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-5">
+        {/* Period grid */}
+        <div>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+            Time slots{dayOfWeek ? ` — ${dayOfWeek}` : ''}
+          </p>
+          <div className="space-y-1">
+            {Object.entries(PERIOD_TIME).map(([p, time]) => {
+              const period = Number(p)
+              const busy = dayOfWeek
+                ? timetable.some((s) => s.day === dayOfWeek && s.period === period)
+                : false
+              const myBooked = bookedPeriods.has(period)
+              const isSelected = selectedPeriod === period
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => handlePeriodClick(period)}
+                  className={[
+                    'w-full flex items-center justify-between rounded-lg px-3 py-2 text-sm border transition-colors',
+                    isSelected
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-800 font-semibold'
+                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700',
+                  ].join(' ')}
+                >
+                  <span className="font-medium w-6">P{period}</span>
+                  <span className="flex-1 text-left px-2 text-slate-500">{time}</span>
+                  {myBooked ? (
+                    <span className="text-xs rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-700">Booked</span>
+                  ) : busy ? (
+                    <span className="text-xs rounded-full px-2 py-0.5 bg-amber-100 text-amber-700">Busy</span>
+                  ) : (
+                    <span className="text-xs rounded-full px-2 py-0.5 bg-slate-100 text-slate-500">Free</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Room picker + booking form */}
+        <div>
+          {selectedPeriod === null ? (
+            <p className="text-sm text-slate-400 mt-8 text-center">← Select a time slot to see available rooms</p>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                Available rooms — P{selectedPeriod} ({PERIOD_TIME[selectedPeriod]})
+              </p>
+              {errors.period && <p className="text-xs text-rose-600">{errors.period}</p>}
+              {availableRooms.length === 0 ? (
+                <p className="text-sm text-slate-400">No rooms available for this slot.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {availableRooms.map((room) => (
+                    <button
+                      key={room}
+                      type="button"
+                      onClick={() => setSelectedRoom(room)}
+                      className={[
+                        'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+                        selectedRoom === room
+                          ? 'border-indigo-500 bg-indigo-600 text-white'
+                          : 'border-slate-300 bg-white hover:bg-indigo-50 text-slate-700',
+                      ].join(' ')}
+                    >
+                      {room}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {errors.room && <p className="text-xs text-rose-600">{errors.room}</p>}
+
+              <form onSubmit={submit} noValidate className="space-y-3 pt-2 border-t border-slate-100">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Topic</label>
+                  <input
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700"
+                    placeholder="e.g. Quadratic equations review"
+                  />
+                  {errors.topic && <p className="text-xs text-rose-600 mt-1">{errors.topic}</p>}
+                </div>
+                <FormField
+                  as="select"
+                  label="Class"
+                  name="revClass"
+                  value={classId}
+                  onChange={(e) => setClassId(e.target.value)}
+                >
+                  {classIds.map((id) => (
+                    <option key={id} value={id}>{id}</option>
+                  ))}
+                </FormField>
+                <button
+                  type="submit"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2 text-sm"
+                >
+                  Schedule Revision
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      </div>
     </Card>
   )
 }

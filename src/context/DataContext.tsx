@@ -88,36 +88,7 @@ interface ChatFile {
   messages: ChatMessage[]
 }
 
-const KEYS = {
-  users: 'estudiez.users',
-  classes: 'estudiez.classes',
-  semesters: 'estudiez.semesters',
-  exams: 'estudiez.exams',
-  scores: 'estudiez.scores',
-  progress: 'estudiez.progress',
-  attendance: 'estudiez.attendance',
-  timetable: 'estudiez.timetable',
-  resources: 'estudiez.resources',
-  revision: 'estudiez.revision',
-  evaluations: 'estudiez.evaluations',
-  news: 'estudiez.news',
-  notifications: 'estudiez.notifications',
-  chatGroups: 'estudiez.chatGroups',
-  chatMessages: 'estudiez.chatMessages',
-  registrations: 'estudiez.registrations',
-} as const
 
-function cached<T>(key: string, fallback: () => Promise<T>): Promise<T> {
-  const raw = window.localStorage.getItem(key)
-  if (raw) {
-    try {
-      return Promise.resolve(JSON.parse(raw) as T)
-    } catch {
-      /* fall through to fetch */
-    }
-  }
-  return fallback()
-}
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
@@ -147,9 +118,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     async function bootstrap() {
       try {
-        const cachedChatGroups = window.localStorage.getItem(KEYS.chatGroups)
-        const cachedChatMessages = window.localStorage.getItem(KEYS.chatMessages)
-
         const [
           baseUsers,
           baseClasses,
@@ -169,37 +137,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
           baseHelplines,
           baseRegistrations,
         ] = await Promise.all([
-          cached<User[]>(KEYS.users, () => loadJson<User[]>('/data/users.json')),
-          cached<SchoolClass[]>(KEYS.classes, () => loadJson<SchoolClass[]>('/data/classes.json')),
+          loadJson<User[]>('/data/users.json'),
+          loadJson<SchoolClass[]>('/data/classes.json'),
           loadJson<Subject[]>('/data/subjects.json'),
-          cached<Semester[]>(KEYS.semesters, () => loadJson<Semester[]>('/data/semesters.json')),
-          cached<Exam[]>(KEYS.exams, () => loadJson<Exam[]>('/data/exams.json')),
-          cached<ScoreDetail[]>(KEYS.scores, () => loadJson<ScoreDetail[]>('/data/scores.json')),
-          cached<ProgressDetail[]>(KEYS.progress, () =>
-            loadJson<ProgressDetail[]>('/data/progress.json'),
-          ),
-          cached<AttendanceRecord[]>(KEYS.attendance, () =>
-            loadJson<AttendanceRecord[]>('/data/attendance.json'),
-          ),
-          cached<TimetableSlot[]>(KEYS.timetable, () =>
-            loadJson<TimetableSlot[]>('/data/timetable.json'),
-          ),
-          cached<Resource[]>(KEYS.resources, () => loadJson<Resource[]>('/data/resources.json')),
-          cached<RevisionClass[]>(KEYS.revision, () =>
-            loadJson<RevisionClass[]>('/data/revision.json'),
-          ),
-          cached<TestEvaluation[]>(KEYS.evaluations, () =>
-            loadJson<TestEvaluation[]>('/data/evaluations.json'),
-          ),
-          cached<NewsItem[]>(KEYS.news, () => loadJson<NewsItem[]>('/data/news.json')),
-          cached<NotificationItem[]>(KEYS.notifications, () =>
-            loadJson<NotificationItem[]>('/data/notifications.json'),
-          ),
+          loadJson<Semester[]>('/data/semesters.json'),
+          loadJson<Exam[]>('/data/exams.json'),
+          loadJson<ScoreDetail[]>('/data/scores.json'),
+          loadJson<ProgressDetail[]>('/data/progress.json'),
+          loadJson<AttendanceRecord[]>('/data/attendance.json'),
+          loadJson<TimetableSlot[]>('/data/timetable.json'),
+          loadJson<Resource[]>('/data/resources.json'),
+          loadJson<RevisionClass[]>('/data/revision.json'),
+          loadJson<TestEvaluation[]>('/data/evaluations.json'),
+          loadJson<NewsItem[]>('/data/news.json'),
+          loadJson<NotificationItem[]>('/data/notifications.json'),
           loadJson<ChatFile>('/data/chat.json'),
           loadJson<Helpline[]>('/data/helplines.json'),
-          cached<RegistrationRequest[]>(KEYS.registrations, () =>
-            loadJson<RegistrationRequest[]>('/data/registrations.json'),
-          ),
+          loadJson<RegistrationRequest[]>('/data/registrations.json'),
         ])
 
         if (cancelled) return
@@ -218,16 +172,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setEvaluations(baseEvaluations)
         setNews(baseNews)
         setNotifications(baseNotifications)
-        setChatGroups(
-          cachedChatGroups
-            ? (JSON.parse(cachedChatGroups) as ChatGroup[])
-            : chatFile.groups,
-        )
-        setChatMessages(
-          cachedChatMessages
-            ? (JSON.parse(cachedChatMessages) as ChatMessage[])
-            : chatFile.messages,
-        )
+        setChatGroups(chatFile.groups)
+        setChatMessages(chatFile.messages)
         setHelplines(baseHelplines)
         setRegistrations(baseRegistrations)
       } catch (err) {
@@ -244,55 +190,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       cancelled = true
     }
   }, [])
-
-  useEffect(() => {
-    if (!loading) window.localStorage.setItem(KEYS.users, JSON.stringify(users))
-  }, [users, loading])
-  useEffect(() => {
-    if (!loading) window.localStorage.setItem(KEYS.classes, JSON.stringify(classes))
-  }, [classes, loading])
-  useEffect(() => {
-    if (!loading) window.localStorage.setItem(KEYS.semesters, JSON.stringify(semesters))
-  }, [semesters, loading])
-  useEffect(() => {
-    if (!loading) window.localStorage.setItem(KEYS.exams, JSON.stringify(exams))
-  }, [exams, loading])
-  useEffect(() => {
-    if (!loading) window.localStorage.setItem(KEYS.scores, JSON.stringify(scores))
-  }, [scores, loading])
-  useEffect(() => {
-    if (!loading) window.localStorage.setItem(KEYS.progress, JSON.stringify(progress))
-  }, [progress, loading])
-  useEffect(() => {
-    if (!loading) window.localStorage.setItem(KEYS.attendance, JSON.stringify(attendance))
-  }, [attendance, loading])
-  useEffect(() => {
-    if (!loading) window.localStorage.setItem(KEYS.timetable, JSON.stringify(timetable))
-  }, [timetable, loading])
-  useEffect(() => {
-    if (!loading) window.localStorage.setItem(KEYS.resources, JSON.stringify(resources))
-  }, [resources, loading])
-  useEffect(() => {
-    if (!loading) window.localStorage.setItem(KEYS.revision, JSON.stringify(revisionClasses))
-  }, [revisionClasses, loading])
-  useEffect(() => {
-    if (!loading) window.localStorage.setItem(KEYS.evaluations, JSON.stringify(evaluations))
-  }, [evaluations, loading])
-  useEffect(() => {
-    if (!loading) window.localStorage.setItem(KEYS.news, JSON.stringify(news))
-  }, [news, loading])
-  useEffect(() => {
-    if (!loading) window.localStorage.setItem(KEYS.notifications, JSON.stringify(notifications))
-  }, [notifications, loading])
-  useEffect(() => {
-    if (!loading) window.localStorage.setItem(KEYS.chatGroups, JSON.stringify(chatGroups))
-  }, [chatGroups, loading])
-  useEffect(() => {
-    if (!loading) window.localStorage.setItem(KEYS.chatMessages, JSON.stringify(chatMessages))
-  }, [chatMessages, loading])
-  useEffect(() => {
-    if (!loading) window.localStorage.setItem(KEYS.registrations, JSON.stringify(registrations))
-  }, [registrations, loading])
 
   const addUser = useCallback((user: User) => setUsers((prev) => [...prev, user]), [])
   const updateUser = useCallback(

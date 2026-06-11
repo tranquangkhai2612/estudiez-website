@@ -9,18 +9,11 @@ import { useAuth } from '../../hooks/useAuth'
 import { useData } from '../../hooks/useData'
 import { useToast } from '../../hooks/useToast'
 import { notificationDetailPath } from '../notificationDetailPath'
-import type { AttendanceStatus } from '../../types'
-
-const STATUS_STYLES: Record<AttendanceStatus, string> = {
-  present: 'bg-emerald-100 text-emerald-700',
-  absent: 'bg-rose-100 text-rose-700',
-  late: 'bg-amber-100 text-amber-700',
-  excused: 'bg-slate-100 text-slate-600',
-}
+import { AttendanceTab, MarksTab } from './StudentDashboard'
 
 export function ParentDashboard() {
   const { currentUser, setCurrentUser } = useAuth()
-  const { scores, attendance, news, notifications, chatGroups, helplines, users, updateUser } =
+  const { attendance, news, notifications, chatGroups, helplines, users, updateUser } =
     useData()
   const { push } = useToast()
 
@@ -32,10 +25,6 @@ export function ParentDashboard() {
   const childEmail = currentUser?.childEmail ?? ''
   const childClassId = child?.classId ?? ''
 
-  const childScores = useMemo(
-    () => scores.filter((item) => item.studentEmail === childEmail),
-    [scores, childEmail],
-  )
   const childAttendance = useMemo(
     () => attendance.filter((item) => item.studentEmail === childEmail),
     [attendance, childEmail],
@@ -130,78 +119,12 @@ export function ParentDashboard() {
         {
           id: 'marks',
           label: 'Marks',
-          content: (
-            <Card title="Child's Mark Report">
-              {childScores.length === 0 ? (
-                <p className="text-sm text-slate-500">No scores available.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-slate-500 border-b border-slate-200">
-                        <th className="py-2 pr-4">Subject</th>
-                        <th className="py-2 pr-4">Test</th>
-                        <th className="py-2 pr-4">Date</th>
-                        <th className="py-2 pr-4">Score</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {childScores.map((item) => (
-                        <tr key={item.id} className="border-b border-slate-100">
-                          <td className="py-2 pr-4 font-semibold">{item.subject}</td>
-                          <td className="py-2 pr-4">{item.testId}</td>
-                          <td className="py-2 pr-4">{item.date}</td>
-                          <td className="py-2 pr-4 font-semibold text-indigo-600">
-                            {item.scoreReceived}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Card>
-          ),
+          content: <MarksTab email={childEmail} />,
         },
         {
           id: 'attendance',
           label: 'Attendance',
-          content: (
-            <Card title="Child's Attendance">
-              {childAttendance.length === 0 ? (
-                <p className="text-sm text-slate-500">No attendance records.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-slate-500 border-b border-slate-200">
-                        <th className="py-2 pr-4">Date</th>
-                        <th className="py-2 pr-4">Subject</th>
-                        <th className="py-2 pr-4">Period</th>
-                        <th className="py-2 pr-4">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {childAttendance.map((item) => (
-                        <tr key={item.id} className="border-b border-slate-100">
-                          <td className="py-2 pr-4">{item.date}</td>
-                          <td className="py-2 pr-4">{item.subject}</td>
-                          <td className="py-2 pr-4">P{item.period}</td>
-                          <td className="py-2 pr-4">
-                            <span
-                              className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${STATUS_STYLES[item.status]}`}
-                            >
-                              {item.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Card>
-          ),
+          content: <AttendanceTab studentAttendance={childAttendance} />,
         },
         {
           id: 'news',

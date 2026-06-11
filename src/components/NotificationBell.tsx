@@ -5,31 +5,14 @@ import { useData } from '../hooks/useData'
 import { notificationDetailPath } from '../pages/notificationDetailPath'
 import type { NotificationItem } from '../types'
 
-const readKey = (email: string) => `estudiez.readNotifications.${email}`
-
-function loadReadIds(email: string): number[] {
-  if (!email) return []
-  try {
-    const raw = localStorage.getItem(readKey(email))
-    return raw ? (JSON.parse(raw) as number[]) : []
-  } catch {
-    return []
-  }
-}
-
 export function NotificationBell() {
   const { currentUser } = useAuth()
   const { notifications, timetable, users } = useData()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
-  const [readIds, setReadIds] = useState<number[]>(() => loadReadIds(currentUser?.email ?? ''))
+  const [readIds, setReadIds] = useState<number[]>([])
   const containerRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    setReadIds(loadReadIds(currentUser?.email ?? ''))
-  }, [currentUser])
-
-  // Close the dropdown when clicking outside of it.
   useEffect(() => {
     if (!open) return
     const onClick = (event: MouseEvent) => {
@@ -92,11 +75,6 @@ export function NotificationBell() {
       // Mark everything currently shown as read.
       const allIds = myNotifications.map((n) => n.id)
       setReadIds(allIds)
-      try {
-        localStorage.setItem(readKey(currentUser.email), JSON.stringify(allIds))
-      } catch {
-        // ignore storage failures
-      }
     }
   }
 

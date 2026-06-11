@@ -15,11 +15,9 @@ const STORAGE_KEY = 'estudiez.currentUser'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    if (typeof window === 'undefined') return null
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
     try {
-      return JSON.parse(raw) as User
+      const raw = window.localStorage.getItem(STORAGE_KEY)
+      return raw ? (JSON.parse(raw) as User) : null
     } catch {
       return null
     }
@@ -35,8 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback((email: string, password: string, users: User[]) => {
     const normalized = email.trim().toLowerCase()
+    const trimmedPassword = password.trim()
     const found = users.find(
-      (user) => user.email === normalized && user.password === password,
+      (user) => user.email === normalized && user.password === trimmedPassword,
     )
     if (found) {
       setCurrentUser(found)

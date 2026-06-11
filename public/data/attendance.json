@@ -58,5 +58,17 @@
     "period": 2,
     "status": "excused",
     "teacher": "Mr. Le"
-  }
+  },
+  { "id": 7,  "studentEmail": "student@estudiez.app", "classId": "10A1", "subject": "Mathematics", "date": "2026-06-08", "period": 1, "status": "present", "teacher": "Ms. Tran" },
+  { "id": 8,  "studentEmail": "linh@estudiez.app",    "classId": "10A1", "subject": "Mathematics", "date": "2026-06-08", "period": 1, "status": "late",    "teacher": "Ms. Tran" },
+  { "id": 9,  "studentEmail": "student@estudiez.app", "classId": "10A1", "subject": "Physics",     "date": "2026-06-08", "period": 3, "status": "present", "teacher": "Mr. Le"   },
+  { "id": 10, "studentEmail": "linh@estudiez.app",    "classId": "10A1", "subject": "Physics",     "date": "2026-06-08", "period": 3, "status": "present", "teacher": "Mr. Le"   },
+  { "id": 11, "studentEmail": "minh@estudiez.app",    "classId": "11A2", "subject": "Physics",     "date": "2026-06-08", "period": 1, "status": "late",    "teacher": "Mr. Le"   },
+  { "id": 12, "studentEmail": "minh@estudiez.app",    "classId": "11A2", "subject": "Mathematics", "date": "2026-06-09", "period": 2, "status": "present", "teacher": "Ms. Tran" },
+  { "id": 13, "studentEmail": "student@estudiez.app", "classId": "10A1", "subject": "Mathematics", "date": "2026-06-10", "period": 1, "status": "present", "teacher": "Ms. Tran" },
+  { "id": 14, "studentEmail": "linh@estudiez.app",    "classId": "10A1", "subject": "Mathematics", "date": "2026-06-10", "period": 1, "status": "absent",  "teacher": "Ms. Tran" },
+  { "id": 15, "studentEmail": "student@estudiez.app", "classId": "10A1", "subject": "Physics",     "date": "2026-06-11", "period": 2, "status": "present", "teacher": "Mr. Le"   },
+  { "id": 16, "studentEmail": "linh@estudiez.app",    "classId": "10A1", "subject": "Physics",     "date": "2026-06-11", "period": 2, "status": "excused", "teacher": "Mr. Le"   },
+  { "id": 17, "studentEmail": "student@estudiez.app", "classId": "10A1", "subject": "Mathematics", "date": "2026-06-13", "period": 1, "status": "present", "teacher": "Ms. Tran" },
+  { "id": 18, "studentEmail": "linh@estudiez.app",    "classId": "10A1", "subject": "Mathematics", "date": "2026-06-13", "period": 1, "status": "present", "teacher": "Ms. Tran" }
 ]
