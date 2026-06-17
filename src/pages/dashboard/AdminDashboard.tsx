@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Card } from '../../components/Card'
 import { FormField } from '../../components/FormField'
+import { Modal } from '../../components/Modal'
 import { Tabs } from '../../components/Tabs'
 import { useAuth } from '../../hooks/useAuth'
 import { useData } from '../../hooks/useData'
@@ -45,6 +46,7 @@ export function AdminDashboard() {
             },
             { id: 'students', label: 'Students', content: <ManageStudents /> },
             { id: 'teachers', label: 'Teachers', content: <ManageTeachers /> },
+            { id: 'parents', label: 'Parents', content: <ManageParents /> },
             { id: 'classes', label: 'Classes', content: <ManageClasses /> },
             { id: 'news', label: 'News', content: <ManageNews /> },
             { id: 'notify', label: 'Notify Teachers', content: <NotifyTeachers /> },
@@ -69,6 +71,7 @@ function ManageRequests() {
   }
 
   const handleReject = (id: number, email: string) => {
+    if (!window.confirm(`Reject registration request from ${email}?`)) return
     rejectRegistration(id)
     push('info', `Registration request from ${email} was rejected.`)
   }
@@ -186,6 +189,7 @@ function ManageStudents() {
   const navigate = useNavigate()
   const students = users.filter((u) => u.role === 'student')
 
+  const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<StudentFormState>({
     ...STUDENT_INITIAL,
     classId: classes[0]?.id ?? '',
@@ -198,6 +202,11 @@ function ManageStudents() {
   const resetForm = () => {
     setForm({ ...STUDENT_INITIAL, classId: classes[0]?.id ?? '' })
     setErrors({})
+  }
+
+  const openModal = () => {
+    resetForm()
+    setModalOpen(true)
   }
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -245,13 +254,27 @@ function ManageStudents() {
       if (parent) updateUser(nextParentEmail, { childEmail: email })
     }
 
+    setModalOpen(false)
     resetForm()
     push('success', `Student added. Login info sent to ${email}.`)
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-slate-900">Students ({students.length})</h3>
+        <button
+          type="button"
+          onClick={openModal}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2 text-sm"
+        >
+          + Add Student
+        </button>
+      </div>
+
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
         title="Add / Enroll Student"
         description="Login credentials are emailed to the student and parent."
       >
@@ -320,18 +343,25 @@ function ManageStudents() {
             error={errors.parentEmail}
             hint="Links an existing parent account to this student."
           />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pt-2">
             <button
               type="submit"
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
             >
               Add Student
             </button>
+            <button
+              type="button"
+              onClick={() => setModalOpen(false)}
+              className="border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-md px-4 py-2"
+            >
+              Cancel
+            </button>
           </div>
         </form>
-      </Card>
+      </Modal>
 
-      <Card title={`Students (${students.length})`}>
+      <Card>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
@@ -389,12 +419,31 @@ const TEACHER_INITIAL: TeacherFormState = {
   subject: '',
 }
 
+interface ParentFormState {
+  email: string
+  fullName: string
+  address: string
+  phone: string
+  occupation: string
+  childEmail: string
+}
+
+const PARENT_INITIAL: ParentFormState = {
+  email: '',
+  fullName: '',
+  address: '',
+  phone: '',
+  occupation: '',
+  childEmail: '',
+}
+
 function ManageTeachers() {
   const { users, subjects, addUser } = useData()
   const { push } = useToast()
   const navigate = useNavigate()
   const teachers = users.filter((u) => u.role === 'teacher')
 
+  const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<TeacherFormState>({
     ...TEACHER_INITIAL,
     subject: subjects[0]?.name ?? '',
@@ -407,6 +456,11 @@ function ManageTeachers() {
   const resetForm = () => {
     setForm({ ...TEACHER_INITIAL, subject: subjects[0]?.name ?? '' })
     setErrors({})
+  }
+
+  const openModal = () => {
+    resetForm()
+    setModalOpen(true)
   }
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -435,13 +489,29 @@ function ManageTeachers() {
       role: 'teacher',
       subject: form.subject,
     })
+    setModalOpen(false)
     resetForm()
     push('success', `Teacher added and assigned to ${form.subject}.`)
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card title="Add Subject Teacher">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-slate-900">Teachers ({teachers.length})</h3>
+        <button
+          type="button"
+          onClick={openModal}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2 text-sm"
+        >
+          + Add Teacher
+        </button>
+      </div>
+
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Add Subject Teacher"
+      >
         <form onSubmit={submit} noValidate className="space-y-3">
           <FormField
             label="Email"
@@ -488,18 +558,25 @@ function ManageTeachers() {
               </option>
             ))}
           </FormField>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pt-2">
             <button
               type="submit"
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
             >
               Add Teacher
             </button>
+            <button
+              type="button"
+              onClick={() => setModalOpen(false)}
+              className="border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-md px-4 py-2"
+            >
+              Cancel
+            </button>
           </div>
         </form>
-      </Card>
+      </Modal>
 
-      <Card title={`Teachers & Subjects (${teachers.length})`}>
+      <Card>
         {teachers.length === 0 ? (
           <p className="text-sm text-slate-500">No teachers yet.</p>
         ) : (
@@ -549,6 +626,223 @@ const CLASS_INITIAL: ClassFormState = {
   homeroomTeacher: '',
 }
 
+function ManageParents() {
+  const { users, addUser } = useData()
+  const { push } = useToast()
+  const navigate = useNavigate()
+  const parents = users.filter((u) => u.role === 'parent')
+  const students = users.filter((u) => u.role === 'student')
+
+  const [modalOpen, setModalOpen] = useState(false)
+  const [form, setForm] = useState<ParentFormState>(PARENT_INITIAL)
+  const [errors, setErrors] = useState<Partial<Record<keyof ParentFormState, string>>>({})
+
+  const update = <K extends keyof ParentFormState>(key: K, value: ParentFormState[K]) =>
+    setForm((prev) => ({ ...prev, [key]: value }))
+
+  const resetForm = () => {
+    setForm(PARENT_INITIAL)
+    setErrors({})
+  }
+
+  const openModal = () => {
+    resetForm()
+    setModalOpen(true)
+  }
+
+  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const email = form.email.trim().toLowerCase()
+    const next: Partial<Record<keyof ParentFormState, string>> = {}
+    if (!form.email.trim()) next.email = 'Email is required.'
+    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) next.email = 'Enter a valid email.'
+    else if (users.some((u) => u.email === email)) next.email = 'This email already exists.'
+    if (!form.fullName.trim()) next.fullName = 'Full name is required.'
+    if (!form.address.trim()) next.address = 'Address is required.'
+    if (!form.phone.trim()) next.phone = 'Phone number is required.'
+    else if (!/^[+\d][\d\s().-]{6,}$/.test(form.phone.trim()))
+      next.phone = 'Enter a valid phone number.'
+    if (form.childEmail) {
+      const childEmailNorm = form.childEmail.trim().toLowerCase()
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(childEmailNorm))
+        next.childEmail = 'Enter a valid student email or leave blank.'
+      else if (!students.some((s) => s.email === childEmailNorm))
+        next.childEmail = 'No student found with this email.'
+    }
+
+    setErrors(next)
+    if (Object.keys(next).length > 0) return
+
+    const childEmailNorm = form.childEmail.trim().toLowerCase() || undefined
+
+    addUser({
+      email,
+      fullName: form.fullName.trim(),
+      address: form.address.trim(),
+      phone: form.phone.trim(),
+      password: 'parent123',
+      role: 'parent',
+      childEmail: childEmailNorm,
+    })
+
+    setModalOpen(false)
+    resetForm()
+    push('success', `Parent added. Login info sent to ${email}.`)
+  }
+
+  // Find linked child for each parent
+  const getLinkedChild = (parent: typeof parents[0]) => {
+    if (parent.childEmail) {
+      return students.find((s) => s.email === parent.childEmail)
+    }
+    return undefined
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-slate-900">Parents ({parents.length})</h3>
+        <button
+          type="button"
+          onClick={openModal}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2 text-sm"
+        >
+          + Add Parent
+        </button>
+      </div>
+
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Add Parent"
+        description="Login credentials are emailed to the parent."
+      >
+        <form onSubmit={submit} noValidate className="space-y-3">
+          <FormField
+            label="Email"
+            name="parentEmail"
+            type="email"
+            value={form.email}
+            onChange={(e) => update('email', e.target.value)}
+            error={errors.email}
+          />
+          <FormField
+            label="Full Name"
+            name="parentName"
+            value={form.fullName}
+            onChange={(e) => update('fullName', e.target.value)}
+            error={errors.fullName}
+          />
+          <FormField
+            label="Address"
+            name="parentAddress"
+            value={form.address}
+            onChange={(e) => update('address', e.target.value)}
+            error={errors.address}
+          />
+          <FormField
+            label="Phone Number"
+            name="parentPhone"
+            type="tel"
+            value={form.phone}
+            onChange={(e) => update('phone', e.target.value)}
+            error={errors.phone}
+          />
+          <FormField
+            label="Occupation (optional)"
+            name="parentOccupation"
+            value={form.occupation}
+            onChange={(e) => update('occupation', e.target.value)}
+          />
+          <FormField
+            as="select"
+            label="Link to Student (optional)"
+            name="parentChildEmail"
+            value={form.childEmail}
+            onChange={(e) => update('childEmail', e.target.value)}
+            error={errors.childEmail}
+            hint="Link this parent to an existing student."
+          >
+            <option value="">Select a student</option>
+            {students.map((s) => (
+              <option key={s.email} value={s.email}>
+                {s.fullName} ({s.classId || 'No class'})
+              </option>
+            ))}
+          </FormField>
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="submit"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
+            >
+              Add Parent
+            </button>
+            <button
+              type="button"
+              onClick={() => setModalOpen(false)}
+              className="border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-md px-4 py-2"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Card>
+        {parents.length === 0 ? (
+          <p className="text-sm text-slate-500">No parents yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left text-slate-500 border-b border-slate-200">
+                  <th className="py-2 pr-4">Name</th>
+                  <th className="py-2 pr-4">Phone</th>
+                  <th className="py-2 pr-4">Linked Child</th>
+                  <th className="py-2 pr-4">Email</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parents.map((p) => {
+                  const child = getLinkedChild(p)
+                  return (
+                    <tr key={p.email} className="border-b border-slate-100">
+                      <td className="py-2 pr-4 font-semibold">
+                        <button
+                          type="button"
+                          onClick={() => navigate(userDetailPath(p.email))}
+                          className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                        >
+                          {p.fullName}
+                        </button>
+                      </td>
+                      <td className="py-2 pr-4 text-slate-600">{p.phone || '—'}</td>
+                      <td className="py-2 pr-4">
+                        {child ? (
+                          <button
+                            type="button"
+                            onClick={() => navigate(userDetailPath(child.email))}
+                            className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                          >
+                            {child.fullName}
+                          </button>
+                        ) : (
+                          <span className="text-slate-400">Not linked</span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4 text-slate-600">{p.email}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
+  )
+}
+
 function ManageClasses() {
   const { classes, users, addClass } = useData()
   const { push } = useToast()
@@ -565,6 +859,7 @@ function ManageClasses() {
     return map
   }, [users])
 
+  const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<ClassFormState>(CLASS_INITIAL)
   const [errors, setErrors] = useState<Partial<Record<keyof ClassFormState, string>>>({})
 
@@ -574,6 +869,11 @@ function ManageClasses() {
   const resetForm = () => {
     setForm(CLASS_INITIAL)
     setErrors({})
+  }
+
+  const openModal = () => {
+    resetForm()
+    setModalOpen(true)
   }
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -597,13 +897,29 @@ function ManageClasses() {
       year: form.year.trim(),
       homeroomTeacher: form.homeroomTeacher || undefined,
     })
+    setModalOpen(false)
     resetForm()
     push('success', `Class ${id} created.`)
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card title="Create Class">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-slate-900">Classes ({classes.length})</h3>
+        <button
+          type="button"
+          onClick={openModal}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2 text-sm"
+        >
+          + Create Class
+        </button>
+      </div>
+
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Create Class"
+      >
         <form onSubmit={submit} noValidate className="space-y-3">
           <FormField
             label="Class ID"
@@ -652,18 +968,25 @@ function ManageClasses() {
               </option>
             ))}
           </FormField>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pt-2">
             <button
               type="submit"
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
             >
               Create Class
             </button>
+            <button
+              type="button"
+              onClick={() => setModalOpen(false)}
+              className="border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-md px-4 py-2"
+            >
+              Cancel
+            </button>
           </div>
         </form>
-      </Card>
+      </Modal>
 
-      <Card title={`Classes (${classes.length})`}>
+      <Card>
         {classes.length === 0 ? (
           <p className="text-sm text-slate-500">No classes yet.</p>
         ) : (
@@ -715,12 +1038,38 @@ interface NewsFormState {
 const NEWS_INITIAL: NewsFormState = { title: '', category: 'Announcement', body: '' }
 
 function ManageNews() {
-  const { news, addNews } = useData()
+  const { news, addNews, updateNews, removeNews } = useData()
   const { currentUser } = useAuth()
   const { push } = useToast()
 
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState<NewsFormState>(NEWS_INITIAL)
   const [errors, setErrors] = useState<Partial<Record<keyof NewsFormState, string>>>({})
+
+  const resetForm = () => {
+    setForm(NEWS_INITIAL)
+    setErrors({})
+    setEditingId(null)
+  }
+
+  const openModal = () => {
+    resetForm()
+    setModalOpen(true)
+  }
+
+  const openEdit = (item: typeof news[0]) => {
+    setEditingId(item.id)
+    setForm({ title: item.title, category: item.category, body: item.body })
+    setErrors({})
+    setModalOpen(true)
+  }
+
+  const handleDelete = (id: number, title: string) => {
+    if (!window.confirm(`Delete news "${title}"?`)) return
+    removeNews(id)
+    push('success', 'News deleted.')
+  }
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -730,20 +1079,45 @@ function ManageNews() {
     setErrors(next)
     if (Object.keys(next).length > 0) return
 
-    addNews({
-      title: form.title.trim(),
-      body: form.body.trim(),
-      category: form.category,
-      author: currentUser?.fullName ?? 'Admin',
-      date: new Date().toISOString().slice(0, 10),
-    })
-    setForm(NEWS_INITIAL)
-    push('success', 'News published.')
+    if (editingId !== null) {
+      updateNews(editingId, {
+        title: form.title.trim(),
+        body: form.body.trim(),
+        category: form.category,
+      })
+      push('success', 'News updated.')
+    } else {
+      addNews({
+        title: form.title.trim(),
+        body: form.body.trim(),
+        category: form.category,
+        author: currentUser?.fullName ?? 'Admin',
+        date: new Date().toISOString().slice(0, 10),
+      })
+      push('success', 'News published.')
+    }
+    setModalOpen(false)
+    resetForm()
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card title="Post School News">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-slate-900">News ({news.length})</h3>
+        <button
+          type="button"
+          onClick={openModal}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2 text-sm"
+        >
+          + Post News
+        </button>
+      </div>
+
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editingId !== null ? 'Edit News' : 'Post School News'}
+      >
         <form onSubmit={submit} noValidate className="space-y-3">
           <FormField
             label="Title"
@@ -772,32 +1146,61 @@ function ManageNews() {
             onChange={(e) => setForm((p) => ({ ...p, body: e.target.value }))}
             error={errors.body}
           />
-          <button
-            type="submit"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
-          >
-            Publish
-          </button>
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="submit"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
+            >
+              {editingId !== null ? 'Save Changes' : 'Publish'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setModalOpen(false)}
+              className="border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-md px-4 py-2"
+            >
+              Cancel
+            </button>
+          </div>
         </form>
-      </Card>
+      </Modal>
 
-      <Card title="Published News">
-        <ul className="space-y-3">
-          {news.map((item) => (
-            <li key={item.id} className="border border-slate-200 rounded-lg px-3 py-2">
-              <div className="flex items-center justify-between gap-2">
-                <p className="font-semibold text-slate-900">{item.title}</p>
-                <span className="text-xs rounded-full bg-slate-100 text-slate-600 px-2 py-0.5">
-                  {item.category}
-                </span>
-              </div>
-              <p className="text-sm text-slate-600 mt-1">{item.body}</p>
-              <p className="text-xs text-slate-400 mt-1">
-                {item.date} · {item.author}
-              </p>
-            </li>
-          ))}
-        </ul>
+      <Card>
+        {news.length === 0 ? (
+          <p className="text-sm text-slate-500">No news published yet.</p>
+        ) : (
+          <ul className="space-y-3">
+            {news.map((item) => (
+              <li key={item.id} className="border border-slate-200 rounded-lg px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-slate-900">{item.title}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs rounded-full bg-slate-100 text-slate-600 px-2 py-0.5">
+                      {item.category}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => openEdit(item)}
+                      className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(item.id, item.title)}
+                      className="text-xs text-red-600 hover:text-red-800 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600 mt-1">{item.body}</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {item.date} · {item.author}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
     </div>
   )
@@ -807,11 +1210,23 @@ function NotifyTeachers() {
   const { addNotification, notifications } = useData()
   const { currentUser } = useAuth()
   const { push } = useToast()
+  const [modalOpen, setModalOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [error, setError] = useState('')
 
   const teacherNotifications = notifications.filter((n) => n.audience === 'teacher')
+
+  const resetForm = () => {
+    setTitle('')
+    setBody('')
+    setError('')
+  }
+
+  const openModal = () => {
+    resetForm()
+    setModalOpen(true)
+  }
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -827,14 +1242,31 @@ function NotifyTeachers() {
       sender: currentUser?.fullName ?? 'Admin',
       date: new Date().toISOString().slice(0, 10),
     })
-    setTitle('')
-    setBody('')
+    setModalOpen(false)
+    resetForm()
     push('success', 'Notification sent to all teachers.')
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card title="Send Notification to Teachers">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-slate-900">
+          Teacher Notifications ({teacherNotifications.length})
+        </h3>
+        <button
+          type="button"
+          onClick={openModal}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2 text-sm"
+        >
+          + Send Notification
+        </button>
+      </div>
+
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Send Notification to Teachers"
+      >
         <form onSubmit={submit} noValidate className="space-y-3">
           <FormField
             label="Title"
@@ -852,21 +1284,30 @@ function NotifyTeachers() {
             onChange={(e) => setBody(e.target.value)}
             error={error && !body.trim() ? error : undefined}
           />
-          <button
-            type="submit"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
-          >
-            Send
-          </button>
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="submit"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
+            >
+              Send
+            </button>
+            <button
+              type="button"
+              onClick={() => setModalOpen(false)}
+              className="border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-md px-4 py-2"
+            >
+              Cancel
+            </button>
+          </div>
         </form>
-      </Card>
+      </Modal>
 
-      <Card title="Recent Teacher Notifications">
-        <ul className="space-y-2">
-          {teacherNotifications.length === 0 ? (
-            <p className="text-sm text-slate-500">No notifications sent yet.</p>
-          ) : (
-            teacherNotifications.map((n) => (
+      <Card>
+        {teacherNotifications.length === 0 ? (
+          <p className="text-sm text-slate-500">No notifications sent yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {teacherNotifications.map((n) => (
               <li key={n.id} className="border border-slate-200 rounded-lg px-3 py-2">
                 <Link
                   to={notificationDetailPath(n.id)}
@@ -879,9 +1320,9 @@ function NotifyTeachers() {
                   {n.date} · {n.sender}
                 </p>
               </li>
-            ))
-          )}
-        </ul>
+            ))}
+          </ul>
+        )}
       </Card>
     </div>
   )
@@ -903,14 +1344,43 @@ const GROUP_TYPE_SUFFIX: Record<ChatGroupType, string> = {
 }
 
 function ManageChatGroups() {
-  const { classes, chatGroups, addChatGroup } = useData()
+  const { classes, chatGroups, addChatGroup, users } = useData()
   const { push } = useToast()
 
+  const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<ChatGroupFormState>({
     classId: classes[0]?.id ?? '',
     type: 'student-teacher',
   })
   const [createError, setCreateError] = useState('')
+
+  // Calculate member counts for each chat group
+  const getMemberCount = (group: typeof chatGroups[0]) => {
+    const classStudents = users.filter((u) => u.role === 'student' && u.classId === group.classId)
+    const teachers = users.filter((u) => u.role === 'teacher')
+    
+    if (group.type === 'student-teacher') {
+      return classStudents.length + teachers.length
+    } else {
+      // parent-teacher: count parents of students in this class
+      const studentEmails = new Set(classStudents.map((s) => s.email))
+      const parents = users.filter(
+        (u) => u.role === 'parent' && u.childEmail && studentEmails.has(u.childEmail)
+      )
+      return parents.length + teachers.length
+    }
+  }
+
+  // Get groups count per class
+  const getClassGroupsCount = (classId: string) => {
+    return chatGroups.filter((g) => g.classId === classId).length
+  }
+
+  const openModal = () => {
+    setForm({ classId: classes[0]?.id ?? '', type: 'student-teacher' })
+    setCreateError('')
+    setModalOpen(true)
+  }
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -923,27 +1393,53 @@ function ManageChatGroups() {
       setCreateError('Invalid class.')
       return
     }
-    const id = `${form.classId}-${schoolClass.year}-${GROUP_TYPE_SUFFIX[form.type]}`
-    if (chatGroups.some((g) => g.id === id)) {
-      setCreateError('This group already exists for the selected class and type.')
+    
+    // Check if this class already has 2 groups
+    const existingGroups = chatGroups.filter((g) => g.classId === form.classId)
+    if (existingGroups.length >= 2) {
+      setCreateError('This class already has the maximum of 2 chat groups.')
       return
     }
+    
+    // Check if this specific type already exists for this class
+    if (existingGroups.some((g) => g.type === form.type)) {
+      setCreateError(`A ${GROUP_TYPE_LABELS[form.type]} group already exists for this class.`)
+      return
+    }
+    
+    const id = `${form.classId}-${schoolClass.year}-${GROUP_TYPE_SUFFIX[form.type]}`
+    const name = `${schoolClass.name} ${GROUP_TYPE_LABELS[form.type]}`
+    
     setCreateError('')
     addChatGroup({
       id,
-      name: `${schoolClass.name} ${GROUP_TYPE_LABELS[form.type]}`,
+      name,
       classId: form.classId,
       year: schoolClass.year,
       type: form.type,
     })
+    setModalOpen(false)
     push('success', `Chat group created for ${schoolClass.name}.`)
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-slate-900">Chat Groups ({chatGroups.length})</h3>
+        <button
+          type="button"
+          onClick={openModal}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2 text-sm"
+        >
+          + Create Group
+        </button>
+      </div>
+
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
         title="Create Chat Group"
-        description="Create a group chat channel for a class between students & teachers or parents & teachers."
+        description="Each class can have up to 2 groups: one for students & teachers, one for parents & teachers."
       >
         <form onSubmit={submit} noValidate className="space-y-3">
           <FormField
@@ -953,6 +1449,7 @@ function ManageChatGroups() {
             value={form.classId}
             onChange={(e) => setForm((p) => ({ ...p, classId: e.target.value }))}
             error={createError && !form.classId ? createError : undefined}
+            hint={form.classId ? `${getClassGroupsCount(form.classId)}/2 groups created` : undefined}
           >
             <option value="">Select a class</option>
             {classes.map((c) => (
@@ -972,48 +1469,69 @@ function ManageChatGroups() {
             <option value="student-teacher">Students &amp; Teachers</option>
             <option value="parent-teacher">Parents &amp; Teachers</option>
           </FormField>
-          <button
-            type="submit"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
-          >
-            Create Group
-          </button>
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="submit"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
+            >
+              Create Group
+            </button>
+            <button
+              type="button"
+              onClick={() => setModalOpen(false)}
+              className="border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold rounded-md px-4 py-2"
+            >
+              Cancel
+            </button>
+          </div>
         </form>
-      </Card>
+      </Modal>
 
-      <Card title={`Chat Groups (${chatGroups.length})`}>
+      <Card>
         {chatGroups.length === 0 ? (
           <p className="text-sm text-slate-500">No chat groups yet.</p>
         ) : (
-          <ul className="space-y-2">
-            {chatGroups.map((g) => (
-              <li
-                key={g.id}
-                className="flex flex-wrap items-center justify-between gap-2 border border-slate-200 rounded-lg px-3 py-2"
-              >
-                <div>
-                  <Link
-                    to={chatGroupDetailPath(g.id)}
-                    className="font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
-                  >
-                    {g.name}
-                  </Link>
-                  <p className="text-xs text-slate-500">
-                    {g.classId} · {g.year}
-                  </p>
-                </div>
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    g.type === 'student-teacher'
-                      ? 'bg-indigo-100 text-indigo-700'
-                      : 'bg-amber-100 text-amber-700'
-                  }`}
-                >
-                  {GROUP_TYPE_LABELS[g.type]}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left text-slate-500 border-b border-slate-200">
+                  <th className="py-2 pr-4">Name</th>
+                  <th className="py-2 pr-4">Class</th>
+                  <th className="py-2 pr-4">Type</th>
+                  <th className="py-2 pr-4">Members</th>
+                </tr>
+              </thead>
+              <tbody>
+                {chatGroups.map((g) => (
+                  <tr key={g.id} className="border-b border-slate-100">
+                    <td className="py-2 pr-4">
+                      <Link
+                        to={chatGroupDetailPath(g.id)}
+                        className="font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
+                      >
+                        {g.name}
+                      </Link>
+                    </td>
+                    <td className="py-2 pr-4 text-slate-600">
+                      {g.classId} · {g.year}
+                    </td>
+                    <td className="py-2 pr-4">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          g.type === 'student-teacher'
+                            ? 'bg-indigo-100 text-indigo-700'
+                            : 'bg-amber-100 text-amber-700'
+                        }`}
+                      >
+                        {GROUP_TYPE_LABELS[g.type]}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-4 text-slate-600">{getMemberCount(g)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
     </div>

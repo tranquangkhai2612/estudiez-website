@@ -109,7 +109,7 @@ export function ParentDashboard() {
           content: (
             <Card title="Child's Timetable" description={child ? `Class ${childClassId}` : ''}>
               {childClassId ? (
-                <TimetableGrid classId={childClassId} />
+                <TimetableGrid classId={childClassId} studentEmail={childEmail} />
               ) : (
                 <p className="text-sm text-rose-600">No linked child account.</p>
               )}

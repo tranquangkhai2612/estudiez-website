@@ -4,7 +4,7 @@ import type { User } from '../types'
 
 interface AuthContextValue {
   currentUser: User | null
-  login: (email: string, password: string, users: User[]) => User | null
+  login: (user: User) => void
   signOut: () => void
   setCurrentUser: (user: User | null) => void
 }
@@ -31,17 +31,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser])
 
-  const login = useCallback((email: string, password: string, users: User[]) => {
-    const normalized = email.trim().toLowerCase()
-    const trimmedPassword = password.trim()
-    const found = users.find(
-      (user) => user.email === normalized && user.password === trimmedPassword,
-    )
-    if (found) {
-      setCurrentUser(found)
-      return found
-    }
-    return null
+  const login = useCallback((user: User) => {
+    setCurrentUser(user)
   }, [])
 
   const signOut = useCallback(() => setCurrentUser(null), [])

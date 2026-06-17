@@ -237,7 +237,7 @@ export function TeacherDashboard() {
 }
 
 function ChatTab({ classIds }: { classIds: string[] }) {
-  const { chatGroups } = useData()
+  const { chatGroups, classes } = useData()
 
   const myGroups = useMemo(
     () => chatGroups.filter((g) => classIds.includes(g.classId)),
@@ -277,7 +277,7 @@ function ChatTab({ classIds }: { classIds: string[] }) {
                   ].join(' ')}
                 >
                   <p className={`text-xs font-semibold ${active ? 'text-white' : 'text-slate-800'}`}>
-                    {g.classId}
+                    {classes.find((c) => c.id === g.classId)?.name ?? g.classId}
                   </p>
                   <span className={`mt-1 inline-flex items-center gap-1 text-xs rounded-full px-2 py-0.5 border ${
                     active ? 'bg-white/20 text-white border-white/30' : meta.color

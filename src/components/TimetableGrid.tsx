@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useData } from '../hooks/useData'
-import type { DayOfWeek, TimetableSlot } from '../types'
+import type { AttendanceStatus, DayOfWeek, TimetableSlot } from '../types'
 
 const DAYS: DayOfWeek[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const DAY_OFFSET: Record<DayOfWeek, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5 }
@@ -8,6 +8,13 @@ const DAY_OFFSET: Record<DayOfWeek, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, 
 const PERIOD_TIME: Record<number, string> = {
   1: '07:00', 2: '07:50', 3: '08:40', 4: '09:35',
   5: '10:25', 6: '13:00', 7: '13:50', 8: '14:40', 9: '15:30', 10: '16:20',
+}
+
+const ATTENDANCE_STYLES: Record<AttendanceStatus, { bg: string; text: string; label: string }> = {
+  present: { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Present' },
+  absent: { bg: 'bg-rose-100', text: 'text-rose-700', label: 'Absent' },
+  late: { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Late' },
+  excused: { bg: 'bg-slate-100', text: 'text-slate-600', label: 'Excused' },
 }
 
 function getMonday(date: Date): Date {
@@ -26,10 +33,12 @@ interface TimetableGridProps {
   classId: string
   /** Filter to a training system; omit to show all. */
   system?: TimetableSlot['system']
+  /** Student email to show attendance status for (optional - only for student view). */
+  studentEmail?: string
 }
 
-export function TimetableGrid({ classId, system }: TimetableGridProps) {
-  const { timetable } = useData()
+export function TimetableGrid({ classId, system, studentEmail }: TimetableGridProps) {
+  const { timetable, attendance } = useData()
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()))
 
   const today = localDateStr(new Date())
@@ -76,6 +85,18 @@ export function TimetableGrid({ classId, system }: TimetableGridProps) {
 
   const lookup = (day: DayOfWeek, period: number) =>
     slots.find((slot) => slot.day === day && slot.period === period)
+
+  // Lookup attendance for a specific date/period/subject
+  const lookupAttendance = (date: string, period: number, subject: string) => {
+    if (!studentEmail) return undefined
+    return attendance.find(
+      (a) =>
+        a.studentEmail === studentEmail &&
+        a.date === date &&
+        a.period === period &&
+        a.subject === subject,
+    )
+  }
 
   return (
     <div className="space-y-3">
@@ -141,6 +162,9 @@ export function TimetableGrid({ classId, system }: TimetableGridProps) {
                 {DAYS.map((day) => {
                   const slot = lookup(day, period)
                   const isToday = dateForDay(day) === today
+                  const date = dateForDay(day)
+                  const attendanceRecord = slot ? lookupAttendance(date, period, slot.subject) : undefined
+                  const attendanceStyle = attendanceRecord ? ATTENDANCE_STYLES[attendanceRecord.status] : undefined
                   return (
                     <td key={day} className={`py-2 px-3 border-b border-slate-100 ${isToday ? 'bg-indigo-50/40' : ''}`}>
                       {slot ? (
@@ -151,6 +175,11 @@ export function TimetableGrid({ classId, system }: TimetableGridProps) {
                         }`}>
                           <p className="font-semibold text-slate-800">{slot.subject}</p>
                           <p className="text-xs text-slate-500">{slot.teacher} · {slot.room}</p>
+                          {attendanceStyle && (
+                            <span className={`inline-block mt-1 text-xs font-medium px-1.5 py-0.5 rounded ${attendanceStyle.bg} ${attendanceStyle.text}`}>
+                              {attendanceStyle.label}
+                            </span>
+                          )}
                         </div>
                       ) : (
                         <span className="text-slate-300">—</span>

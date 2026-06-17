@@ -15,6 +15,8 @@ export interface User {
   age?: number
   password: string
   role: Role
+  /** Backend UUID — used for server-side mutations (e.g., change-password). */
+  userId?: string
   /** Student: homeroom class id (e.g. "10A1"). */
   classId?: string
   /** Student: grade level. */

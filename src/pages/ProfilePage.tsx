@@ -4,6 +4,7 @@ import { FormField } from '../components/FormField'
 import { useAuth } from '../hooks/useAuth'
 import { useData } from '../hooks/useData'
 import { useToast } from '../hooks/useToast'
+import { changePasswordApi } from '../services/api'
 
 interface ProfileFormState {
   fullName: string
@@ -44,6 +45,8 @@ export function ProfilePage() {
 
   const [password, setPassword] = useState<PasswordFormState>(PASSWORD_INITIAL)
   const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({})
+
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false)
 
   if (!currentUser) return null
 
@@ -120,8 +123,6 @@ export function ProfilePage() {
   const validatePassword = (): PasswordErrors => {
     const next: PasswordErrors = {}
     if (!password.currentPassword) next.currentPassword = 'Enter your current password.'
-    else if (password.currentPassword !== currentUser.password)
-      next.currentPassword = 'Current password is incorrect.'
 
     if (!password.newPassword) next.newPassword = 'New password is required.'
     else if (password.newPassword.length < 6)
@@ -135,19 +136,31 @@ export function ProfilePage() {
     return next
   }
 
-  const handlePasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handlePasswordSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const errors = validatePassword()
     setPasswordErrors(errors)
     if (Object.keys(errors).length > 0) return
 
-    const updated = updateUser(currentUser.email, { password: password.newPassword })
-    if (updated) {
-      setCurrentUser(updated)
+    if (!currentUser.userId) {
+      push('error', 'Cannot change password: user ID not found. Please log out and log in again.')
+      return
+    }
+
+    setPasswordSubmitting(true)
+    try {
+      await changePasswordApi(currentUser.userId, password.currentPassword.trim(), password.newPassword.trim())
       setPassword(PASSWORD_INITIAL)
       push('success', 'Password changed successfully.')
-    } else {
-      push('error', 'Could not change password. Try again.')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('422')) {
+        setPasswordErrors({ currentPassword: 'Current password is incorrect.' })
+      } else {
+        push('error', 'Could not change password. Try again.')
+      }
+    } finally {
+      setPasswordSubmitting(false)
     }
   }
 
@@ -275,9 +288,10 @@ export function ProfilePage() {
           <div className="sm:col-span-2 flex justify-end">
             <button
               type="submit"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-5 py-2"
+              disabled={passwordSubmitting}
+              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold rounded-md px-5 py-2"
             >
-              Update Password
+              {passwordSubmitting ? 'Updating…' : 'Update Password'}
             </button>
           </div>
         </form>

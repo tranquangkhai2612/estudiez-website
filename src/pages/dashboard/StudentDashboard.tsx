@@ -26,16 +26,53 @@ export function StudentDashboard() {
     notifications,
     chatGroups,
     helplines,
+    scores,
+    classes,
+    timetable,
+    users,
   } = useData()
   const { push } = useToast()
 
   const email = currentUser?.email ?? ''
   const classId = currentUser?.classId ?? ''
 
+  // Get class info
+  const studentClass = useMemo(
+    () => classes.find((c) => c.id === classId),
+    [classes, classId],
+  )
+
+  // Get homeroom teacher
+  const homeroomTeacher = useMemo(
+    () => studentClass ? users.find((u) => u.email === studentClass.homeroomTeacher) : undefined,
+    [users, studentClass],
+  )
+
+  // Student scores
+  const studentScores = useMemo(
+    () => scores.filter((s) => s.studentEmail === email),
+    [scores, email],
+  )
+
+  // Calculate average score
+  const avgScore = useMemo(() => {
+    if (studentScores.length === 0) return null
+    const sum = studentScores.reduce((acc, s) => acc + s.scoreReceived, 0)
+    return Math.round(sum / studentScores.length)
+  }, [studentScores])
+
   const studentAttendance = useMemo(
     () => attendance.filter((item) => item.studentEmail === email),
     [attendance, email],
   )
+
+  // Calculate attendance rate
+  const attendanceRate = useMemo(() => {
+    if (studentAttendance.length === 0) return null
+    const present = studentAttendance.filter((a) => a.status === 'present' || a.status === 'late').length
+    return Math.round((present / studentAttendance.length) * 100)
+  }, [studentAttendance])
+
   const studentEvaluations = useMemo(
     () => evaluations.filter((item) => item.studentEmail === email),
     [evaluations, email],
@@ -54,15 +91,146 @@ export function StudentDashboard() {
     [chatGroups, classId],
   )
 
+  // Count weekly timetable slots
+  const weeklySlots = useMemo(
+    () => timetable.filter((s) => s.classId === classId).length,
+    [timetable, classId],
+  )
+
+  // Count classmates
+  const classmates = useMemo(
+    () => users.filter((u) => u.role === 'student' && u.classId === classId && u.email !== email),
+    [users, classId, email],
+  )
+
   return (
     <Tabs
       tabs={[
         {
+          id: 'overview',
+          label: 'Overview',
+          content: (
+            <div className="space-y-4">
+              <Card title={`Welcome, ${currentUser?.fullName ?? 'Student'}!`}>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                  <div className="border border-slate-200 rounded-lg p-3">
+                    <p className="text-2xl font-bold text-indigo-600">
+                      {(studentClass?.name ?? classId) || '—'}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">Class</p>
+                  </div>
+                  <div className="border border-slate-200 rounded-lg p-3">
+                    <p className="text-2xl font-bold text-emerald-600">
+                      {avgScore !== null ? `${avgScore}%` : '—'}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">Avg Score</p>
+                  </div>
+                  <div className="border border-slate-200 rounded-lg p-3">
+                    <p className="text-2xl font-bold text-amber-600">
+                      {attendanceRate !== null ? `${attendanceRate}%` : '—'}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">Attendance</p>
+                  </div>
+                  <div className="border border-slate-200 rounded-lg p-3">
+                    <p className="text-2xl font-bold text-slate-600">
+                      {studentScores.length}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">Tests Taken</p>
+                  </div>
+                </div>
+              </Card>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <Card title="Class Info">
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <dt className="text-slate-500">Class</dt>
+                      <dd className="font-medium text-slate-800">
+                        {(studentClass?.name ?? classId) || 'Not assigned'}
+                      </dd>
+                    </div>
+                    {studentClass && (
+                      <>
+                        <div className="flex justify-between">
+                          <dt className="text-slate-500">Grade</dt>
+                          <dd className="font-medium text-slate-800">Grade {studentClass.grade}</dd>
+                        </div>
+                        <div className="flex justify-between">
+                          <dt className="text-slate-500">Academic Year</dt>
+                          <dd className="font-medium text-slate-800">{studentClass.year}</dd>
+                        </div>
+                      </>
+                    )}
+                    <div className="flex justify-between">
+                      <dt className="text-slate-500">Homeroom Teacher</dt>
+                      <dd className="font-medium text-slate-800">
+                        {homeroomTeacher?.fullName ?? 'Not assigned'}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-slate-500">Classmates</dt>
+                      <dd className="font-medium text-slate-800">{classmates.length}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-slate-500">Weekly Classes</dt>
+                      <dd className="font-medium text-slate-800">{weeklySlots} slots</dd>
+                    </div>
+                  </dl>
+                </Card>
+
+                <Card title="Quick Stats">
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <dt className="text-slate-500">Total Scores</dt>
+                      <dd className="font-medium text-slate-800">{studentScores.length}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-slate-500">Attendance Records</dt>
+                      <dd className="font-medium text-slate-800">{studentAttendance.length}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-slate-500">Evaluations</dt>
+                      <dd className="font-medium text-slate-800">{studentEvaluations.length}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-slate-500">Notifications</dt>
+                      <dd className="font-medium text-slate-800">{myNotifications.length}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-slate-500">Available Revision Classes</dt>
+                      <dd className="font-medium text-slate-800">{revisionClasses.length}</dd>
+                    </div>
+                  </dl>
+                </Card>
+              </div>
+
+              {myNotifications.length > 0 && (
+                <Card title="Recent Notifications">
+                  <ul className="space-y-2">
+                    {myNotifications.slice(0, 3).map((n) => (
+                      <li key={n.id} className="border border-slate-200 rounded-lg px-3 py-2">
+                        <Link
+                          to={notificationDetailPath(n.id)}
+                          className="font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
+                        >
+                          {n.title}
+                        </Link>
+                        <p className="text-sm text-slate-600 line-clamp-1">{n.body}</p>
+                        <p className="text-xs text-slate-400 mt-1">{n.date}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
+            </div>
+          ),
+        },
+        {
           id: 'timetable',
           label: 'Timetable',
           content: (
-            <Card title="Weekly Timetable" description={`Class ${classId}`}>
-              <TimetableGrid classId={classId} />
+            <Card title="Weekly Timetable" description={`Class ${studentClass?.name ?? classId}`}>
+              <TimetableGrid classId={classId} studentEmail={email} />
             </Card>
           ),
         },
@@ -390,7 +558,8 @@ function attGetMonday(d: Date): Date {
 }
 
 function attDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10)
+  // Use local date methods to match TimetableGrid's localDateStr (avoids timezone issues)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 export function AttendanceTab({ studentAttendance }: { studentAttendance: AttendanceRecord[] }) {

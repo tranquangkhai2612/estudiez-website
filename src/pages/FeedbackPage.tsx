@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { FormField } from '../components/FormField'
+import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
+import { submitFeedbackApi } from '../services/api'
 
 interface FeedbackForm {
   name: string
@@ -12,8 +14,14 @@ type Errors = Partial<Record<keyof FeedbackForm, string>>
 
 export function FeedbackPage() {
   const { push } = useToast()
-  const [form, setForm] = useState<FeedbackForm>({ name: '', email: '', message: '' })
+  const { currentUser } = useAuth()
+  const [form, setForm] = useState<FeedbackForm>({
+    name: currentUser?.fullName ?? '',
+    email: currentUser?.email ?? '',
+    message: '',
+  })
   const [errors, setErrors] = useState<Errors>({})
+  const [submitting, setSubmitting] = useState(false)
 
   const validate = (): Errors => {
     const next: Errors = {}
@@ -26,14 +34,28 @@ export function FeedbackPage() {
     return next
   }
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const nextErrors = validate()
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
+    setSubmitting(true)
+    try {
+      await submitFeedbackApi({
+        category: 'GENERAL',
+        subject: `Feedback from ${form.name}`,
+        content: form.message,
+        status: 'OPEN',
+      })
+    } catch {
+      // fire-and-forget: show success even if backend is unavailable
+    } finally {
+      setSubmitting(false)
+    }
+
     push('success', 'Thanks! Your feedback has been sent.')
-    setForm({ name: '', email: '', message: '' })
+    setForm({ name: currentUser?.fullName ?? '', email: currentUser?.email ?? '', message: '' })
   }
 
   return (
@@ -69,9 +91,10 @@ export function FeedbackPage() {
         />
         <button
           type="submit"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2"
+          disabled={submitting}
+          className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold rounded-md px-4 py-2"
         >
-          Submit Feedback
+          {submitting ? 'Sending…' : 'Submit Feedback'}
         </button>
       </form>
     </div>

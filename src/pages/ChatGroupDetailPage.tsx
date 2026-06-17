@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Card } from '../components/Card'
 import { ChatPanel } from '../components/ChatPanel'
@@ -50,6 +50,7 @@ export function ChatGroupDetailPage() {
   const [editName, setEditName] = useState('')
   const [editError, setEditError] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [showMembers, setShowMembers] = useState(false)
 
   const group = chatGroups.find((g) => g.id === groupId)
 
@@ -108,6 +109,29 @@ export function ChatGroupDetailPage() {
       </div>
     )
   }
+
+  // Get all members for this chat group
+  const members = useMemo(() => {
+    const teachers = users.filter((u) => u.role === 'teacher')
+    const classStudents = users.filter((u) => u.role === 'student' && u.classId === group.classId)
+    
+    if (group.type === 'student-teacher') {
+      return [
+        ...teachers.map((t) => ({ ...t, memberType: 'Teacher' as const })),
+        ...classStudents.map((s) => ({ ...s, memberType: 'Student' as const })),
+      ]
+    } else {
+      // parent-teacher
+      const studentEmails = new Set(classStudents.map((s) => s.email))
+      const parents = users.filter(
+        (u) => u.role === 'parent' && u.childEmail && studentEmails.has(u.childEmail)
+      )
+      return [
+        ...teachers.map((t) => ({ ...t, memberType: 'Teacher' as const })),
+        ...parents.map((p) => ({ ...p, memberType: 'Parent' as const })),
+      ]
+    }
+  }, [users, group.classId, group.type])
 
   const startEdit = () => {
     setEditName(group.name)
@@ -228,8 +252,56 @@ export function ChatGroupDetailPage() {
             <span className="text-xs text-slate-500">
               Class: {group.classId} · {group.year}
             </span>
+            <button
+              type="button"
+              onClick={() => setShowMembers(!showMembers)}
+              className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline"
+            >
+              {showMembers ? 'Hide' : 'View'} Members ({members.length})
+            </button>
           </div>
         )}
+
+        {showMembers && (
+          <div className="mb-4 border border-slate-200 rounded-lg p-3">
+            <h4 className="text-sm font-semibold text-slate-700 mb-2">
+              Members ({members.length})
+            </h4>
+            <div className="max-h-48 overflow-y-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-slate-500 border-b border-slate-200">
+                    <th className="py-1.5 pr-4">Name</th>
+                    <th className="py-1.5 pr-4">Role</th>
+                    <th className="py-1.5 pr-4">Email</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {members.map((m) => (
+                    <tr key={m.email} className="border-b border-slate-100 last:border-b-0">
+                      <td className="py-1.5 pr-4 font-medium text-slate-800">{m.fullName}</td>
+                      <td className="py-1.5 pr-4">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            m.memberType === 'Teacher'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : m.memberType === 'Student'
+                                ? 'bg-indigo-100 text-indigo-700'
+                                : 'bg-amber-100 text-amber-700'
+                          }`}
+                        >
+                          {m.memberType}
+                        </span>
+                      </td>
+                      <td className="py-1.5 pr-4 text-slate-600">{m.email}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         <ChatPanel groupId={group.id} />
       </Card>
     </div>

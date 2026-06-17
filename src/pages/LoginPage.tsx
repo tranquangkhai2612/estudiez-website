@@ -4,9 +4,11 @@ import { FormField } from '../components/FormField'
 import { useAuth } from '../hooks/useAuth'
 import { useData } from '../hooks/useData'
 import { useToast } from '../hooks/useToast'
+import { loginApi } from '../services/api'
+import type { Role } from '../types'
 
 interface FormErrors {
-  email?: string
+  username?: string
   password?: string
 }
 
@@ -17,32 +19,62 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation() as { state?: { from?: string } }
 
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<FormErrors>({})
+  const [submitting, setSubmitting] = useState(false)
 
   const validate = (): FormErrors => {
     const next: FormErrors = {}
-    if (!email.trim()) next.email = 'Email is required.'
-    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
-      next.email = 'Enter a valid email address.'
+    if (!username.trim()) next.username = 'Username is required.'
     if (!password) next.password = 'Password is required.'
     return next
   }
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const nextErrors = validate()
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
-    const user = login(email, password, users)
-    if (!user) {
-      push('error', 'Invalid email or password.')
-      return
+    setSubmitting(true)
+    try {
+      const resp = await loginApi(username.trim(), password.trim())
+
+      // Map backend uppercase role (ADMIN → admin) to frontend Role type
+      const role = (resp.role ?? '').toLowerCase() as Role
+
+      // Prefer the full profile from DataContext (has classId / grade / subject)
+      // Students have email: null in DB → synthesize from username (same as mapApiUsersToFrontend)
+      const email = (resp.email ?? `${resp.username ?? resp.userId}@estudiez.edu.vn`).toLowerCase()
+      const baseUser = users.find(u => u.email.toLowerCase() === email) ?? {
+        email,
+        fullName: resp.fullName ?? username.trim(),
+        address: '',
+        phone: resp.phone ?? undefined,
+        password: '',
+        role,
+      }
+      // Always attach the backend userId so password-change and other mutations work
+      const user = { ...baseUser, userId: resp.userId ?? baseUser.userId }
+
+      login(user)
+      push('success', `Welcome back, ${user.fullName}.`)
+      navigate(
+        location.state?.from && location.state.from !== '/login'
+          ? location.state.from
+          : '/dashboard',
+      )
+    } catch (err) {
+      const status = err instanceof Error ? err.message : ''
+      if (status.includes('403')) {
+        push('error', 'Your account has been disabled. Contact an administrator.')
+      } else {
+        push('error', 'Invalid username or password.')
+      }
+    } finally {
+      setSubmitting(false)
     }
-    push('success', `Welcome back, ${user.fullName}.`)
-    navigate(location.state?.from && location.state.from !== '/login' ? location.state.from : '/dashboard')
   }
 
   return (
@@ -52,13 +84,13 @@ export function LoginPage() {
 
       <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
         <FormField
-          label="Email"
-          name="email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          error={errors.email}
-          autoComplete="email"
+          label="Username"
+          name="username"
+          type="text"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          error={errors.username}
+          autoComplete="username"
         />
         <FormField
           label="Password"
@@ -71,10 +103,10 @@ export function LoginPage() {
         />
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || submitting}
           className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md px-4 py-2 disabled:opacity-50"
         >
-          {loading ? 'Loading...' : 'Login'}
+          {loading || submitting ? 'Please wait…' : 'Login'}
         </button>
       </form>
 
@@ -84,14 +116,6 @@ export function LoginPage() {
           Create an account
         </Link>
       </p>
-
-      <div className="mt-5 border-t border-slate-200 pt-4 text-xs text-slate-500 space-y-1">
-        <p className="font-semibold text-slate-700">Demo accounts</p>
-        <p>admin@estudiez.app / admin123</p>
-        <p>teacher@estudiez.app / teacher123 (Mathematics)</p>
-        <p>student@estudiez.app / student123 (Class 10A1)</p>
-        <p>parent@estudiez.app / parent123</p>
-      </div>
     </div>
   )
 }

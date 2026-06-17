@@ -1,0 +1,34 @@
+# Project: eStudiez – Student Management System
+
+## Backend
+- **Framework:** Spring Boot 4.1.0 (Java 21)
+- **Database:** SQL Server (Docker), port 1433, DB name: `eStudentDB`
+- **Backend port:** `http://localhost:8081`
+- **Swagger UI:** `http://localhost:8081/swagger-ui/index.html`
+- **API spec:** See `API.md` or `api-spec.json` in this folder
+- **Auth:** None yet (JWT coming later — all endpoints are open)
+
+## Key Rules for AI
+- All IDs for users/students/teachers/parents are **UUID** (string format)
+- All IDs for classes/assessments/semesters etc. are **Integer**
+- Dates are `YYYY-MM-DD`, DateTimes are ISO 8601
+- Base API path: `/api/...`
+- Always check `API.md` for endpoint shapes before generating fetch calls
+- The `api-spec.json` file contains the full OpenAPI 3.0 spec — use it for types
+
+## Frontend Stack
+- See package.json for current dependencies
+
+## API Call Pattern
+```js
+// Example fetch
+const res = await fetch('http://localhost:8081/api/students');
+const students = await res.json();
+```
+
+## Generating TypeScript Types
+Run this to regenerate types from the live spec:
+```bash
+npx openapi-typescript http://localhost:8081/v3/api-docs -o src/types/api.d.ts
+```
+

@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useData } from '../hooks/useData'
 import { useToast } from '../hooks/useToast'
 import { NotificationBell } from './NotificationBell'
 import { ToastStack } from './ToastStack'
@@ -10,9 +12,26 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   }`
 
 export function Layout() {
-  const { currentUser, signOut } = useAuth()
+  const { currentUser, signOut, setCurrentUser } = useAuth()
+  const { users } = useData()
   const { push } = useToast()
   const navigate = useNavigate()
+
+  // Sync currentUser with fresh data from DataContext (e.g., classId from enrollments)
+  useEffect(() => {
+    if (!currentUser || users.length === 0) return
+    const freshUser = users.find(
+      (u) => u.email.toLowerCase() === currentUser.email.toLowerCase(),
+    )
+    if (freshUser) {
+      // Merge fresh data but preserve userId from login response
+      const updated = { ...freshUser, userId: currentUser.userId ?? freshUser.userId }
+      // Only update if classId or other key fields changed
+      if (updated.classId !== currentUser.classId || updated.childEmail !== currentUser.childEmail) {
+        setCurrentUser(updated)
+      }
+    }
+  }, [users, currentUser, setCurrentUser])
 
   const handleSignOut = () => {
     signOut()

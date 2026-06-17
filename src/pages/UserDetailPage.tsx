@@ -541,46 +541,109 @@ function TeacherDetail({ user }: { user: User }) {
       .sort((a, b) => a.id.localeCompare(b.id))
   }, [timetable, classes, user.fullName])
 
-  return (
-    <Card title="Teaching">
-      <dl className="grid gap-4 sm:grid-cols-2 text-sm">
-        <Detail label="Subject" value={user.subject ?? '—'} />
-        <div>
-          <dt className="text-xs font-semibold uppercase text-slate-500">Homeroom Classes</dt>
-          <dd className="mt-1 font-medium text-slate-800">
-            {homeroomClasses.length === 0
-              ? '—'
-              : homeroomClasses.map((c) => c.name).join(', ')}
-          </dd>
-        </div>
-      </dl>
+  // Get teacher's schedule from timetable
+  const teacherSchedule = useMemo(() => {
+    const slots = timetable.filter((s) => s.teacher === user.fullName)
+    // Group by day
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    const grouped = new Map<string, typeof slots>()
+    for (const day of days) {
+      const daySlots = slots.filter((s) => s.day === day).sort((a, b) => {
+        const [aH, aM] = a.startTime.split(':').map(Number)
+        const [bH, bM] = b.startTime.split(':').map(Number)
+        return aH * 60 + aM - (bH * 60 + bM)
+      })
+      if (daySlots.length > 0) {
+        grouped.set(day, daySlots)
+      }
+    }
+    return grouped
+  }, [timetable, user.fullName])
 
-      <div className="mt-4">
-        <p className="text-xs font-semibold uppercase text-slate-500">Classes Teaching</p>
-        {taughtClasses.length === 0 ? (
-          <p className="mt-1 text-sm text-slate-500">No scheduled classes.</p>
-        ) : (
-          <ul className="mt-2 grid gap-2 sm:grid-cols-2">
-            {taughtClasses.map((c) => (
-              <li key={c.id}>
-                <Link
-                  to={classDetailPath(c.id, user.subject)}
-                  className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 hover:bg-slate-50"
-                >
-                  <span>
-                    <span className="block font-semibold text-indigo-600">{c.name}</span>
-                    <span className="block text-xs text-slate-500">
-                      {c.id} · Grade {c.grade}
+  const totalSlots = useMemo(() => {
+    return timetable.filter((s) => s.teacher === user.fullName).length
+  }, [timetable, user.fullName])
+
+  return (
+    <>
+      <Card title="Teaching Summary">
+        <dl className="grid gap-4 sm:grid-cols-3 text-sm">
+          <Detail label="Subject" value={user.subject ?? '—'} />
+          <div>
+            <dt className="text-xs font-semibold uppercase text-slate-500">Homeroom Classes</dt>
+            <dd className="mt-1 font-medium text-slate-800">
+              {homeroomClasses.length === 0
+                ? '—'
+                : homeroomClasses.map((c) => c.name).join(', ')}
+            </dd>
+          </div>
+          <Detail label="Classes Teaching" value={String(taughtClasses.length)} />
+          <Detail label="Weekly Slots" value={String(totalSlots)} />
+        </dl>
+
+        <div className="mt-4">
+          <p className="text-xs font-semibold uppercase text-slate-500">Classes Teaching</p>
+          {taughtClasses.length === 0 ? (
+            <p className="mt-1 text-sm text-slate-500">No scheduled classes.</p>
+          ) : (
+            <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+              {taughtClasses.map((c) => (
+                <li key={c.id}>
+                  <Link
+                    to={classDetailPath(c.id, user.subject)}
+                    className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 hover:bg-slate-50"
+                  >
+                    <span>
+                      <span className="block font-semibold text-indigo-600">{c.name}</span>
+                      <span className="block text-xs text-slate-500">
+                        {c.id} · Grade {c.grade}
+                      </span>
                     </span>
-                  </span>
-                  <span aria-hidden className="text-slate-400">→</span>
-                </Link>
-              </li>
+                    <span aria-hidden className="text-slate-400">→</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </Card>
+
+      <Card title="Weekly Schedule">
+        {teacherSchedule.size === 0 ? (
+          <p className="text-sm text-slate-500">No scheduled classes.</p>
+        ) : (
+          <div className="space-y-4">
+            {Array.from(teacherSchedule.entries()).map(([day, slots]) => (
+              <div key={day}>
+                <h4 className="text-sm font-semibold text-slate-700 mb-2">{day}</h4>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {slots.map((slot, idx) => {
+                    const slotClass = classes.find((c) => c.id === slot.classId)
+                    return (
+                      <div
+                        key={`${day}-${idx}`}
+                        className="border border-slate-200 rounded-lg px-3 py-2 bg-slate-50"
+                      >
+                        <p className="text-xs text-slate-500">
+                          {slot.startTime} - {slot.endTime}
+                        </p>
+                        <p className="font-semibold text-slate-800">{slot.subject}</p>
+                        <p className="text-xs text-indigo-600">
+                          {slotClass ? slotClass.name : slot.classId}
+                        </p>
+                        {slot.room && (
+                          <p className="text-xs text-slate-500">Room: {slot.room}</p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
-      </div>
-    </Card>
+      </Card>
+    </>
   )
 }
 
